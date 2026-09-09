@@ -1,5 +1,7 @@
 # GSM-SNIFFER 2.0.0 · Go laboratory console
 
+[GitHub Release](https://github.com/addxemmm/gsmsniffer/releases/tag/v2.0.0) · [Docker Hub](https://hub.docker.com/r/addxemmm/gsmsniffer) · [验收记录 / Acceptance](docs/releases/2.0.0.md)
+
 > **使用范围：仅限自有测试 SIM、自有终端，在屏蔽室或屏蔽箱内进行隔离实验。不得接入或采集公众移动网络及第三方通信。射频任务前应确认屏蔽有效、测试设备归属及现场操作条件。**
 >
 > **Use only your own test SIMs and terminals inside an RF-shielded room or shielded enclosure. Do not connect to or collect public-network or third-party communications. Verify isolation and device ownership before any RF job.**
