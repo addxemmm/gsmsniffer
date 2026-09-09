@@ -193,6 +193,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		default:
 			methodError("GET, POST")
 		}
+	case "/api/v1/frequencies":
+		if r.Method != http.MethodGet {
+			methodError("GET")
+			return
+		}
+		if r.URL.RawQuery != "" {
+			send(400, "invalid_request", "Frequency catalog does not accept query parameters", nil)
+			return
+		}
+		items := h.manager.Frequencies()
+		send(200, "ok", "Scanned frequencies in the current runtime mode", map[string]any{"items": items, "total": len(items)})
 	case "/api/v1/observations":
 		switch r.Method {
 		case http.MethodGet:
@@ -286,7 +297,7 @@ func auditMethod(method string) string {
 }
 func auditRoute(path string) string {
 	switch path {
-	case "/healthz", "/readyz", "/api/v1/auth", "/api/v1/status", "/api/v1/capabilities", "/api/v1/jobs", "/api/v1/observations", "/api/v1/openapi.json":
+	case "/healthz", "/readyz", "/api/v1/auth", "/api/v1/status", "/api/v1/capabilities", "/api/v1/jobs", "/api/v1/frequencies", "/api/v1/observations", "/api/v1/openapi.json":
 		return path
 	default:
 		if strings.HasPrefix(path, "/api/v1/jobs/") {

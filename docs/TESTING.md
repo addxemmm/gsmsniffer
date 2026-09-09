@@ -34,3 +34,5 @@ A physical test is a separate gated activity: owned test SIM/terminal, documente
 ## Evidence / 证据
 
 Release notes should list commands, OS/Go version, image digest, pass/fail and skipped tests. A source build, Docker image build, healthy HTTP server, UI check and RF acceptance are distinct results. 本文是验收计划，不是测试已通过的记录。
+
+Scan-first regression: `node scripts/test_web_workflow.js` drives the actual UI handlers with synthetic API state through scan, stop, select IMSI, capture, stop, select SMS, and clear/invalidation. Go catalog/API tests cover matching provenance, busy state, source mode, restart, deduplication and legacy history. These tests do not exercise radio hardware.

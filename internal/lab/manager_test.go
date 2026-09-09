@@ -122,6 +122,7 @@ func TestDeadlineAndPrivacy(t *testing.T) {
 			c.Kind = "capture"
 			c.Mode = mode
 			c.FrequencyMHz = 935.2
+			c.ScanJobID = scanForCapture(t, m).ScanJobID
 			j, e := m.Start(c)
 			if e != nil {
 				t.Fatal(e)

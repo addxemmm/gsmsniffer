@@ -45,6 +45,7 @@ jobs:
           go test ./...
           go test -race ./...
           go build ./cmd/server
+          node scripts/test_web_workflow.js
           node scripts/test_web_auth.js
           node scripts/test_web_transport.js
           python3 scripts/test_hub_tags.py

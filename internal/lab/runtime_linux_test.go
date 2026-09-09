@@ -104,6 +104,7 @@ func TestShieldedOwnedProcessStopBounded(t *testing.T) {
 	helperRuntime(t)
 	m := manager(t, Options{Mode: "shielded"})
 	c := fixture()
+	c.ScanJobID = scanForCapture(t, m).ScanJobID
 	c.Kind = "capture"
 	c.Mode = "imsi"
 	c.FrequencyMHz = 935.2
@@ -146,6 +147,7 @@ func TestShieldedFirstFailureNotHiddenByTeardownDeadline(t *testing.T) {
 	t.Setenv("GSMLAB_TEST_BEHAVIOR", "fail-one")
 	m := manager(t, Options{Mode: "shielded"})
 	c := fixture()
+	c.ScanJobID = scanForCapture(t, m).ScanJobID
 	c.Kind = "capture"
 	c.Mode = "imsi"
 	c.FrequencyMHz = 935.2

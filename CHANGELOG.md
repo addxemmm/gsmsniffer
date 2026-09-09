@@ -1,5 +1,7 @@
 # Changelog
 
+- 2.1 workflow correction: scan frequencies first, select a detected channel, then explicitly scan IMSI/SMS. Unified workspace with live frequency/result tables, source validation, selection invalidation and task stop.
+
 ## 2.1 — 2026-09-09
 
 - Make authentication optional: an unset/empty environment token with no token file allows anonymous console auto-connect; configured valid credentials require login, while malformed configured credentials fail startup. Add public `/api/v1/auth` mode discovery and an opt-in file-secret Compose overlay.

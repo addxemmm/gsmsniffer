@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "GSM-SNIFFER v2 read-only acceptance",
-    "description": "Owned test SIMs/terminals only inside RF-shielded rooms/enclosures. Read-only by default. Set allowMutations=true explicitly for demo-only job/cancel/clear examples; run status first. No shared token values. Default baseUrl is the API-only backend on port 8083; the Web console remains on 18083 with same-origin API. 默认直连后端8083，前端18083保留同源API。 Authentication is optional: leave token empty for an anonymous deployment; set it when /api/v1/auth returns required=true.",
+    "description": "Owned test SIMs/terminals only inside RF-shielded rooms/enclosures. Read-only by default. Set allowMutations=true explicitly for demo-only job/cancel/clear examples; run status first. No shared token values. Default baseUrl is the API-only backend on port 8083; the Web console remains on 18083 with same-origin API. 默认直连后端8083，前端18083保留同源API。 Authentication is optional: leave token empty for an anonymous deployment; set it when /api/v1/auth returns required=true. Capture workflow: run a demo scan, finish/cancel it, read Selectable scanned frequencies again, then explicitly run a capture using scanJobId, scanBand and scanFrequency. Legacy manual frequencies are rejected.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -33,6 +33,18 @@
     },
     {
       "key": "serviceMode",
+      "value": ""
+    },
+    {
+      "key": "scanJobId",
+      "value": ""
+    },
+    {
+      "key": "scanFrequency",
+      "value": ""
+    },
+    {
+      "key": "scanBand",
       "value": ""
     }
   ],
@@ -112,6 +124,25 @@
             "exec": [
               "pm.test('Successful HTTP response', function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
               "pm.test('Standard envelope', function () { const body = pm.response.json(); ['code','message','data','request_id'].forEach(k => pm.expect(body).to.have.property(k)); pm.expect(body.request_id).to.be.a('string').and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Selectable scanned frequencies",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/frequencies"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Catalog available', () => pm.response.to.have.status(200));",
+              "const row = pm.response.json().data.items.find(x => x.selectable); pm.collectionVariables.set('scanJobId', row ? row.scan_job_id : ''); pm.collectionVariables.set('scanFrequency', row ? String(row.frequency_mhz) : ''); pm.collectionVariables.set('scanBand', row ? row.band : '');"
             ]
           }
         }
@@ -361,6 +392,72 @@
             "exec": [
               "pm.test('Successful HTTP response', function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
               "pm.test('Standard envelope', function () { const body = pm.response.json(); ['code','message','data','request_id'].forEach(k => pm.expect(body).to.have.property(k)); pm.expect(body.request_id).to.be.a('string').and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Capture IMSI from selected demo frequency (opt-in)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/v1/jobs",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"kind\":\"capture\",\"scan_job_id\":\"{{scanJobId}}\",\"band\":\"{{scanBand}}\",\"frequency_mhz\":{{scanFrequency}},\"mode\":\"imsi\",\"duration_seconds\":5,\"shielded_ack\":true}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.collectionVariables.get('allowMutations') !== 'true' || pm.collectionVariables.get('serviceMode') !== 'demo' || !pm.collectionVariables.get('scanJobId')) pm.execution.skipRequest();"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Capture SMS from selected demo frequency (opt-in)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/v1/jobs",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"kind\":\"capture\",\"scan_job_id\":\"{{scanJobId}}\",\"band\":\"{{scanBand}}\",\"frequency_mhz\":{{scanFrequency}},\"mode\":\"sms\",\"duration_seconds\":5,\"shielded_ack\":true}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.collectionVariables.get('allowMutations') !== 'true' || pm.collectionVariables.get('serviceMode') !== 'demo' || !pm.collectionVariables.get('scanJobId')) pm.execution.skipRequest();"
             ]
           }
         }

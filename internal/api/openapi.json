@@ -789,7 +789,38 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/JobConfig"
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/JobConfig"
+                  },
+                  {
+                    "oneOf": [
+                      {
+                        "properties": {
+                          "kind": {
+                            "enum": [
+                              "scan"
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "properties": {
+                          "kind": {
+                            "enum": [
+                              "capture"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "scan_job_id",
+                          "frequency_mhz",
+                          "mode"
+                        ]
+                      }
+                    ]
+                  }
+                ]
               },
               "examples": {
                 "scan": {
@@ -813,7 +844,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Scan first, wait for completion or stop, then choose a selectable row from GET /api/v1/frequencies. New captures must reference its scan_job_id, band and frequency_mhz. Clear removes this eligibility; unlinked legacy records require a new scan. One active job at a time."
       }
     },
     "/api/v1/jobs/{id}": {
@@ -1449,6 +1481,131 @@
         },
         "security": []
       }
+    },
+    "/api/v1/frequencies": {
+      "get": {
+        "operationId": "scannedFrequencies",
+        "summary": "Deduplicated frequency results with source scan and selection availability",
+        "responses": {
+          "200": {
+            "description": "Current runtime scan results, newest first; no query parameters",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "message",
+                    "data",
+                    "request_id"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Frequencies"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Bearer authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Cross-origin management request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Active experiment conflicts with requested operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Runtime unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1532,6 +1689,11 @@
               true
             ],
             "description": "Confirm own test equipment in a shielded room/enclosure."
+          },
+          "scan_job_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$",
+            "description": "Required for new capture requests: select a retained frequency from this finished/cancelled scan in the current runtime mode. Omit for scan. Legacy job history may omit it."
           }
         }
       },
@@ -1637,6 +1799,17 @@
               "unknown"
             ],
             "description": "Per-record provenance; demo is synthetic, unknown is legacy state of unverified origin."
+          },
+          "job_id": {
+            "type": "string",
+            "description": "Originating job; absent on legacy unlinked records."
+          },
+          "band": {
+            "type": "string",
+            "enum": [
+              "GSM900",
+              "DCS1800"
+            ]
           }
         }
       },
@@ -1793,6 +1966,81 @@
           "required": {
             "type": "boolean",
             "description": "True only when server has a configured token"
+          }
+        }
+      },
+      "ScannedFrequency": {
+        "type": "object",
+        "required": [
+          "scan_job_id",
+          "band",
+          "frequency_mhz",
+          "arfcn",
+          "cell_id",
+          "lac",
+          "mcc",
+          "mnc",
+          "power_dbm",
+          "source",
+          "timestamp",
+          "selectable"
+        ],
+        "properties": {
+          "scan_job_id": {
+            "type": "string"
+          },
+          "band": {
+            "type": "string"
+          },
+          "frequency_mhz": {
+            "type": "number"
+          },
+          "arfcn": {
+            "type": "integer"
+          },
+          "cell_id": {
+            "type": "string"
+          },
+          "lac": {
+            "type": "string"
+          },
+          "mcc": {
+            "type": "string"
+          },
+          "mnc": {
+            "type": "string"
+          },
+          "power_dbm": {
+            "type": "number"
+          },
+          "source": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "selectable": {
+            "type": "boolean",
+            "description": "The source scan has finished or been stopped. Any active job still blocks new captures."
+          }
+        }
+      },
+      "Frequencies": {
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "maxItems": 1000,
+            "items": {
+              "$ref": "#/components/schemas/ScannedFrequency"
+            }
+          },
+          "total": {
+            "type": "integer"
           }
         }
       }

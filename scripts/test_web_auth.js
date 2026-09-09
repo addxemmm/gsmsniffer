@@ -33,7 +33,7 @@ async function consoleFixture(required, failed = false) {
   assert.equal(f.node('#auth-form').classList.contains('hidden'),true);
   assert.equal(f.node('#token').required,false);
   assert.equal(f.node('#connection').textContent,'已连接');
-  assert.equal(f.calls.length,5);
+  assert.equal(f.calls.length,6);
   assert.ok(f.calls.every(c=>!c.options.headers?.Authorization));
   await f.node('#language').events.click();
   assert.equal(f.node('[data-i18n="access"]').textContent,'Anonymous access');

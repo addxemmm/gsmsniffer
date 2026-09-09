@@ -33,6 +33,7 @@ const (
 
 type Config struct {
 	Kind            string  `json:"kind"`
+	ScanJobID       string  `json:"scan_job_id,omitempty"`
 	Band            string  `json:"band"`
 	FrequencyMHz    float64 `json:"frequency_mhz"`
 	Mode            string  `json:"mode"`
@@ -50,6 +51,8 @@ type Job struct {
 }
 type Observation struct {
 	Kind         string  `json:"kind"`
+	JobID        string  `json:"job_id,omitempty"`
+	Band         string  `json:"band,omitempty"`
 	Source       string  `json:"source"`
 	Timestamp    string  `json:"timestamp"`
 	Identity     string  `json:"identity,omitempty"`
@@ -146,10 +149,16 @@ func (m *Manager) validate(c Config) error {
 		return bad("frequency must be finite")
 	}
 	if c.Kind == "scan" {
-		if c.Mode != "" || c.FrequencyMHz != 0 {
-			return bad("scan accepts band only; omit mode and frequency")
+		if c.Mode != "" || c.FrequencyMHz != 0 || c.ScanJobID != "" {
+			return bad("scan accepts band only; omit mode, frequency and scan_job_id")
 		}
 		return nil
+	}
+	if c.ScanJobID != "" {
+		decoded, err := hex.DecodeString(c.ScanJobID)
+		if err != nil || len(decoded) != 16 || c.ScanJobID != strings.ToLower(c.ScanJobID) {
+			return bad("scan_job_id must be a scan job ID")
+		}
 	}
 	if c.Mode != "imsi" && c.Mode != "sms" {
 		return bad("capture mode must be imsi or sms")
@@ -179,6 +188,18 @@ func (m *Manager) Start(c Config) (Job, error) {
 	}
 	if m.active != nil {
 		return Job{}, ErrBusy
+	}
+	if c.Kind == "capture" {
+		matched := false
+		for _, frequency := range m.frequenciesLocked() {
+			if frequency.Selectable && frequency.ScanJobID == c.ScanJobID && frequency.Band == c.Band && math.Abs(frequency.FrequencyMHz-c.FrequencyMHz) < 0.000001 {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return Job{}, fmt.Errorf("%w: select a retained frequency from a completed scan in the current runtime mode", ErrInvalid)
+		}
 	}
 	if m.opts.Mode == "shielded" {
 		if err := shieldedAvailable(c); err != nil {
@@ -359,6 +380,15 @@ func (m *Manager) observe(o Observation) {
 	defer m.mu.Unlock()
 	o = sanitize(o)
 	o.Source = m.opts.Mode
+	o.JobID, o.Band = "", ""
+	if m.active != nil {
+		for _, job := range m.jobs {
+			if job.ID == m.active.id {
+				o.JobID, o.Band = job.ID, job.Config.Band
+				break
+			}
+		}
+	}
 	m.observations = append(m.observations, o)
 	if len(m.observations) > maxObservations {
 		copy(m.observations, m.observations[len(m.observations)-maxObservations:])
@@ -497,7 +527,7 @@ func (m *Manager) restore() error {
 		if o.Kind != "frequencies" && o.Kind != "imsi" && o.Kind != "sms" {
 			continue
 		}
-		if len(o.Timestamp) > 64 || len(o.CellID) > 16 || len(o.LAC) > 16 || len(o.MCC) > 3 || len(o.MNC) > 3 {
+		if len(o.JobID) > 32 || len(o.Band) > 16 || len(o.Timestamp) > 64 || len(o.CellID) > 16 || len(o.LAC) > 16 || len(o.MCC) > 3 || len(o.MNC) > 3 {
 			continue
 		}
 		if o.Source != "demo" && o.Source != "shielded" {

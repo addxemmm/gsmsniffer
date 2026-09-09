@@ -18,8 +18,12 @@ function allowTokenTransport(location) {
     },
     zh: {offline:'未连接',online:'已连接',loading:'加载中…',empty:'暂无记录。',idle:'空闲',synthetic:'仅合成演示数据',shielded:'屏蔽实验环境',failed:'请求失败',authRequired:'请先输入 Bearer token 并连接。',started:'任务已创建。',stopped:'已请求停止任务。',confirmStop:'确认停止此任务？',confirmClear:'永久删除全部观测数据？此操作不可撤销。',cleared:'观测数据已清空。',stop:'停止',id:'任务 ID',kind:'类型',state:'状态',startedAt:'开始时间',endedAt:'结束时间',error:'错误',actions:'操作',timestamp:'时间',arfcn:'ARFCN',frequency_mhz:'MHz',cell_id:'小区 ID',lac:'LAC',mcc:'MCC',mnc:'MNC',power_dbm:'dBm',identity:'身份',text:'消息',total:'总计',unsafeToken:'HTTP 登录仅支持局域网私有 IP 或本机地址；其他地址请使用 HTTPS。',ackRequired:'请先确认屏蔽实验条件。',taskError:'任务错误',demoLabel:'演示 / 合成数据',source:'数据来源',sourceDemo:'演示 / 合成',sourceShielded:'屏蔽实验',sourceUnknown:'来源未知'}
   };
+  Object.assign(messages.en, {scan:'Scan workspace',workflowTitle:'Scan frequencies, then IMSI / SMS',workflowHint:'Choose a detected frequency; only one task runs at a time.',stepScan:'1 · Scan frequencies',scanHint:'Choose a band and scan. Results appear below; finish or stop scanning before selection.',stepSelect:'2 · Choose a detected frequency',selectHint:'Choose IMSI or SMS on a result row. Frequency, band and source scan are filled automatically.',scanBatch:'Scan batch',allScans:'All scan results',noFrequencies:'No usable frequencies yet. Run step 1 first.',stepCapture:'3 · Scan selected frequency for IMSI / SMS',selectFirst:'Select a frequency in step 2 first.',startScan:'Start frequency scan',startCapture:'Start IMSI / SMS scan',capturePrivacy:'IMSI remains masked; SMS is event-only without message bodies. No task starts automatically.',captureResults:'Results for selected frequency',waitingScan:'Waiting for scan to finish / stop',selectionExpired:'Selected frequency is no longer available. Scan again or select another result.',busyHint:'A task is running. Finish or stop it before starting another.',resultsLimit:'Most recent matching results',scanFailed:'Scan failed; check the task history and retry.'});
+  Object.assign(messages.zh, {waitingScan:'等待频点扫描完成或停止',selectionExpired:'所选频点已失效，请重新扫描或选择其他结果。',busyHint:'已有任务运行，请等待完成或先停止。',resultsLimit:'最近的匹配结果',scanFailed:'频点扫描失败，请查看任务记录后重试。'});
   all('[data-i18n]').forEach(el => { messages.zh[el.dataset.i18n] = el.textContent; });
-  let lang = 'zh', token = '', panel = 'overview', connected = false, status = null, jobItems = [], observationData = null;
+  let lang = 'zh', token = '', panel = 'scan', connected = false, status = null, jobItems = [], observationData = null;
+  let frequencyItems = [], selectedFrequency = null, captureRows = [], frequencyRenderKey = "";
+  const frequencyKey = row => row ? row.scan_job_id + ':' + row.frequency_mhz : '';
   let authRequired = true, authKnown = false;
   const canRequest = () => controller !== null && (!authRequired || token !== '');
   let offset = 0, timer = null, refreshing = false, controller = null, generation = 0, mutating = false;
@@ -58,7 +62,7 @@ function allowTokenTransport(location) {
   }
   function renderStatus() {
     if (!status) return;
-    const demo=status.mode==='demo'; set('#mode',demo ? 'DEMO' : String(status.mode || '—').toUpperCase()); set('#mode-note',t(demo ? 'synthetic':'shielded')); $('#demo-banner').classList.toggle('hidden',!demo);
+    const demo=status.mode==='demo'; set('#mode',demo ? 'DEMO' : String(status.mode || '—').toUpperCase()); set('#mode-note',t(demo ? 'synthetic':'shielded')); $('#demo-banner').classList.toggle('hidden',!demo); $('#workflow-demo').classList.toggle('hidden',!demo);
     set('#active-job',status.active_job ? status.active_job.kind + ' / ' + status.active_job.state : t('idle'));
     const seconds=Math.max(0,Number(status.uptime_seconds)||0); set('#uptime',Math.floor(seconds/3600)+'h '+Math.floor(seconds%3600/60)+'m '+Math.floor(seconds%60)+'s'); set('#version','v'+(status.version || '—'));
   }
@@ -78,46 +82,115 @@ function allowTokenTransport(location) {
     table('#observations',cols,rows); const total=Number(observationData.total)||0;
     set('#data-count',t('total')+' '+total); set('#page-index',Math.floor(offset/100)+1); $('#previous').disabled=offset===0; $('#next').disabled=offset+100>=total;
   }
+  function workflowControls() {
+    const busy = !!status?.active_job;
+    $('#scan-form button[type=submit]').disabled = !canRequest() || !connected || busy || mutating;
+    $('#capture-form button[type=submit]').disabled = !canRequest() || !connected || busy || mutating || !selectedFrequency?.selectable;
+    $('#workflow-stop').disabled = !canRequest() || !busy || mutating;
+    const job = status?.active_job;
+    set('#workflow-job',job ? (job.kind === 'scan' ? t('stepScan') : String(job.config?.mode || '').toUpperCase() + ' · ' + job.config?.frequency_mhz + ' MHz') + ' · ' + job.state : t('idle'));
+  }
+  function renderCaptureRows() {
+    if(!selectedFrequency) {set('#capture-results',t('selectFirst')); set('#capture-result-count','0'); return;}
+    const mode = $('#capture-form select[name=mode]').value;
+    const jobIDs = new Set(jobItems.filter(job => job.kind === 'capture' && job.config?.scan_job_id === selectedFrequency.scan_job_id && Number(job.config.frequency_mhz) === Number(selectedFrequency.frequency_mhz) && job.config.mode === mode).map(job => job.id));
+    const rows = captureRows.filter(row => row.kind === mode && jobIDs.has(row.job_id)).slice().reverse();
+    table('#capture-results',mode === 'imsi' ? [['timestamp'],['frequency_mhz'],['identity']] : [['timestamp'],['frequency_mhz'],['text']],rows);
+    set('#capture-result-count',mode.toUpperCase() + ' · ' + rows.length);
+  }
+  function renderSelection() {
+    const row = selectedFrequency;
+    $('#capture-form input[name=band]').value = row?.band || '';
+    $('#capture-form input[name=frequency_mhz]').value = row ? String(row.frequency_mhz) : '';
+    $('#capture-form input[name=scan_job_id]').value = row?.scan_job_id || '';
+    set('#selected-frequency',row ? row.band + ' · ' + row.frequency_mhz + ' MHz · ARFCN ' + row.arfcn + ' · ' + row.scan_job_id.slice(0,8) : t('selectFirst'));
+    renderCaptureRows(); workflowControls();
+  }
+  function selectFrequency(row, mode) {
+    if(!row.selectable || status?.active_job || mutating) return;
+    selectedFrequency = row; captureRows = [];
+    $('#capture-form select[name=mode]').value = mode;
+    $('#capture-form input[name=shielded_ack]').checked = false;
+    renderSelection();
+    $('#capture-form').scrollIntoView({behavior:'smooth',block:'center'});
+    refresh();
+  }
+  function renderFrequencies() {
+    // Preserve result buttons and the open scan selector across unchanged polls.
+    const nextKey=JSON.stringify([frequencyItems,lang,status?.active_job?.id,mutating,connected,$('#scan-filter').value,jobItems[0]?.state]);
+    if(nextKey===frequencyRenderKey) {renderSelection();return;}
+    frequencyRenderKey=nextKey;
+    const filter = $('#scan-filter'), previous = filter.value;
+    filter.replaceChildren();
+    const allOption = document.createElement('option'); allOption.value=''; allOption.textContent=t('allScans'); filter.append(allOption);
+    const batches = new Map();
+    for(const row of frequencyItems) if(!batches.has(row.scan_job_id)) batches.set(row.scan_job_id,row);
+    for(const [id,row] of batches) {const option=document.createElement('option'); option.value=id; option.textContent=row.band + ' · ' + formatTime(row.timestamp) + ' · ' + id.slice(0,8); filter.append(option);}
+    filter.value=batches.has(previous)?previous:'';
+    const rows=frequencyItems.filter(row=>!filter.value || row.scan_job_id===filter.value);
+    set('#frequency-count',rows.length + ' / ' + frequencyItems.length);
+    if(!rows.length) {const lastScan=jobItems.find(job=>job.kind==='scan');set('#frequency-results',t(lastScan?.state==='failed'?'scanFailed':'noFrequencies')); $('#frequency-results').classList.add('empty');}
+    else table('#frequency-results',[['band'],['frequency_mhz'],['arfcn'],['mcc'],['mnc'],['power_dbm'],['source'],['timestamp']],rows,(td,row)=>{
+      for(const mode of ['imsi','sms']) {const button=document.createElement('button'); button.className='secondary'; button.textContent=mode.toUpperCase(); button.disabled=!row.selectable || !!status?.active_job || mutating || !connected; button.title=row.selectable?t('selectHint'):t('waitingScan'); button.addEventListener('click',()=>selectFrequency(row,mode));td.append(button);}
+    });
+    renderSelection();
+  }
   function schedule() { clearTimeout(timer); if(canRequest() && !document.hidden) timer=setTimeout(refresh,5000); }
   async function refresh() {
     if (!canRequest() || document.hidden || refreshing || mutating) return;
-    refreshing=true; const epoch=generation; const currentOffset=offset, currentKind=$('#data-kind').value;
+    refreshing=true; const epoch=generation; const currentOffset=offset, currentKind=$('#data-kind').value, currentSelection=frequencyKey(selectedFrequency), captureKind=$('#capture-form select[name=mode]').value;
     $('#refresh').disabled=true;
     try {
       // Wait for every request to settle before scheduling another polling batch.
-      const responses=await Promise.allSettled([api('/status'),api('/jobs'),api('/capabilities'),api('/observations?kind='+encodeURIComponent(currentKind)+'&limit=100&offset='+currentOffset)]);
+      const responses=await Promise.allSettled([api('/status'),api('/jobs'),api('/capabilities'),api('/observations?kind='+encodeURIComponent(currentKind)+'&limit=100&offset='+currentOffset),api('/frequencies'),...(currentSelection ? [api('/observations?kind='+captureKind+'&limit=500&offset=0'),api('/observations?kind='+captureKind+'&limit=500&offset=500')] : [])]);
       if(epoch!==generation) return;
       const failure=responses.find(result=>result.status==='rejected'); if(failure) throw failure.reason;
-      const [newStatus,jobs,capabilities,observations]=responses.map(result=>result.value);
+      const [newStatus,jobs,capabilities,observations,frequencies,captureFirst,captureSecond]=responses.map(result=>result.value);
       status=newStatus; jobItems=jobs?.items || []; if(currentOffset===offset && currentKind===$('#data-kind').value) observationData=observations;
-      connection(true); renderStatus(); renderJobs(); renderData(); set('#capabilities',JSON.stringify(capabilities,null,2));
+      frequencyItems=frequencies?.items || [];
+      if(selectedFrequency) {
+        const found=frequencyItems.find(row=>frequencyKey(row)===frequencyKey(selectedFrequency) && row.selectable);
+        if(!found) {selectedFrequency=null; captureRows=[]; $('#capture-form input[name=shielded_ack]').checked=false; notify(t('selectionExpired'),true);} else selectedFrequency=found;
+      }
+      if(currentSelection===frequencyKey(selectedFrequency) && captureKind===$('#capture-form select[name=mode]').value) captureRows=[...(captureFirst?.items || []),...(captureSecond?.items || [])];
+      connection(true); renderFrequencies(); renderStatus(); renderJobs(); renderData(); set('#capabilities',JSON.stringify(capabilities,null,2));
       const maxDuration=Number(capabilities?.max_duration_seconds);
       if(Number.isInteger(maxDuration) && maxDuration>0) all('input[name=duration_seconds]').forEach(input=>{input.max=String(maxDuration);});
     } catch(error) { if(epoch===generation && error.name!=='AbortError') { connection(false); notify(error.message,true); } }
-    finally { refreshing=false; $('#refresh').disabled=false; schedule(); }
+    finally { refreshing=false; $('#refresh').disabled=false; workflowControls(); schedule(); }
   }
   async function mutate(work) {
     if(mutating) return;
     if(!canRequest()) {notify(t('authRequired'),true); return;}
     mutating=true; all('.job-form button[type=submit]').forEach(el=>el.disabled=true); $('#clear-data').disabled=true;
-    try {await work();} catch(error) {if(error.name!=='AbortError') notify(error.message,true);} finally {mutating=false; all('.job-form button[type=submit]').forEach(el=>el.disabled=false); $('#clear-data').disabled=false; await refresh();}
+    try {await work();} catch(error) {if(error.name!=='AbortError') notify(error.message,true);} finally {mutating=false; $('#clear-data').disabled=false; workflowControls(); await refresh();}
   }
   all('[data-panel]').forEach(button => button.addEventListener('click',() => { panel=button.dataset.panel; all('.panel').forEach(el=>el.classList.toggle('hidden',el.id!=='panel-'+panel)); all('.nav').forEach(el=>el.classList.toggle('active',el===button)); set('#page-title',t(panel)); }));
-  $('#language').addEventListener('click',() => {lang=lang==='zh'?'en':'zh'; document.documentElement.lang=lang==='zh'?'zh-CN':'en'; all('[data-i18n]').forEach(el=>el.textContent=t(el.dataset.i18n)); set('#language',lang==='zh'?'EN':'中文'); set('#page-title',t(panel)); connection(connected); renderStatus(); renderAuth(); if(canRequest()) {renderJobs(); renderData();} });
+  $('#language').addEventListener('click',() => {lang=lang==='zh'?'en':'zh'; document.documentElement.lang=lang==='zh'?'zh-CN':'en'; all('[data-i18n]').forEach(el=>el.textContent=t(el.dataset.i18n)); set('#language',lang==='zh'?'EN':'中文'); set('#page-title',t(panel)); connection(connected); renderStatus(); renderAuth(); if(canRequest()) {renderJobs(); renderData(); renderFrequencies();} });
   $('#theme').addEventListener('click',() => {document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';});
-  function disconnect() { generation++; clearTimeout(timer); controller?.abort(); controller=null; token=''; $('#token').value=''; status=null; jobItems=[]; observationData=null; connection(false); ['#mode','#active-job','#uptime','#version','#capabilities','#data-count'].forEach(s=>set(s,'—')); set('#mode-note',t('awaitConnection')); ['#jobs','#observations'].forEach(s=>{$(s).replaceChildren(); $(s).classList.add('empty'); set(s,t('connectFirst'));}); $('#demo-banner').classList.add('hidden'); offset=0; set('#page-index','1'); $('#previous').disabled=true; $('#next').disabled=true; all('.ack input').forEach(el=>el.checked=false); }
+  function disconnect() { generation++; clearTimeout(timer); controller?.abort(); controller=null; token=''; $('#token').value=''; status=null; jobItems=[]; observationData=null; frequencyItems=[]; selectedFrequency=null; captureRows=[]; connection(false); ['#mode','#active-job','#uptime','#version','#capabilities','#data-count'].forEach(s=>set(s,'—')); set('#mode-note',t('awaitConnection')); ['#jobs','#observations'].forEach(s=>{$(s).replaceChildren(); $(s).classList.add('empty'); set(s,t('connectFirst'));}); $('#demo-banner').classList.add('hidden'); $('#workflow-demo').classList.add('hidden'); offset=0; set('#page-index','1'); $('#previous').disabled=true; $('#next').disabled=true; all('.ack input').forEach(el=>el.checked=false); renderFrequencies(); }
   $('#disconnect').addEventListener('click',() => {disconnect(); $('#notice').classList.add('hidden');});
   $('#auth-form').addEventListener('submit',async(event) => { event.preventDefault(); if(!authKnown) {await bootstrapAuth(); return;} const value=$('#token').value.trim(); if(authRequired && !value) return;
     if(authRequired && !allowTokenTransport(location)) {notify(t('unsafeToken'),true); return;}
     disconnect(); token=value; controller=new AbortController(); $('#notice').classList.add('hidden'); set('#jobs',t('loading')); set('#observations',t('loading')); await refresh();
   });
   all('.job-form').forEach(form => form.addEventListener('submit',event => {event.preventDefault(); if(!form.reportValidity()) return; const values=new FormData(form); if(!form.elements.shielded_ack.checked) {notify(t('ackRequired'),true); return;}
+    if(status?.active_job) {notify(t('busyHint'),true); return;}
     const body={kind:form.dataset.kind,band:values.get('band'),duration_seconds:Number(values.get('duration_seconds')),shielded_ack:true};
-    if(body.kind==='capture') {body.frequency_mhz=Number(values.get('frequency_mhz')); body.mode=values.get('mode');}
-    mutate(async() => {try {await api('/jobs',{method:'POST',body:JSON.stringify(body)}); notify(t('started'));} finally {form.elements.shielded_ack.checked=false;}});
+    if(body.kind==='capture') {
+      if(!selectedFrequency?.selectable) {notify(t('selectFirst'),true); return;}
+      body.scan_job_id=selectedFrequency.scan_job_id; body.band=selectedFrequency.band; body.frequency_mhz=selectedFrequency.frequency_mhz; body.mode=values.get('mode');
+    }
+    mutate(async() => {try {
+      const job=await api('/jobs',{method:'POST',body:JSON.stringify(body)}); status={...status,active_job:job};
+      if(body.kind==='scan') {selectedFrequency=null; captureRows=[]; $('#scan-filter').value='';}
+      workflowControls(); notify(t('started'));
+    } finally {form.elements.shielded_ack.checked=false;}});
   }));
-  function frequencyBand() {const dcs=$('#capture-form select[name=band]').value==='DCS1800', input=$('#capture-form input[name=frequency_mhz]'); input.min=dcs?'1805.2':'925.2'; input.max=dcs?'1879.8':'959.8'; input.value=dcs?'1845':'945';}
-  $('#capture-form select[name=band]').addEventListener('change',frequencyBand); frequencyBand();
+  $('#capture-form select[name=mode]').addEventListener('change',()=>{captureRows=[];renderCaptureRows();refresh();});
+  $('#scan-filter').addEventListener('change',renderFrequencies);
+  $('#frequency-refresh').addEventListener('click',refresh);
+  $('#workflow-stop').addEventListener('click',()=>mutate(async()=>{const id=status?.active_job?.id;if(!id || !window.confirm(t('confirmStop'))) return;await api('/jobs/'+encodeURIComponent(id),{method:'DELETE'});status.active_job=null;workflowControls();notify(t('stopped'));}));
   $('#clear-data').addEventListener('click',()=>mutate(async()=>{if(!window.confirm(t('confirmClear'))) return; await api('/observations',{method:'DELETE'}); offset=0; notify(t('cleared'));}));
   $('#refresh').addEventListener('click',()=>{if(!canRequest()) notify(t('authRequired'),true); else refresh();});
   $('#data-kind').addEventListener('change',()=>{offset=0; observationData=null; set('#observations',canRequest()?t('loading'):t('connectFirst')); refresh();});
@@ -148,5 +221,6 @@ function allowTokenTransport(location) {
   }
   $('#previous').disabled=true; $('#next').disabled=true;
   renderAuth();
+  workflowControls();
   bootstrapAuth();
 })();

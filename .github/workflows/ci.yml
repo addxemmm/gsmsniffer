@@ -27,6 +27,7 @@ jobs:
           go build ./cmd/server
       - name: Publication surface check
         run: |
+          node scripts/test_web_workflow.js
           node scripts/test_web_auth.js
           node scripts/test_web_transport.js
           python3 scripts/test_hub_tags.py

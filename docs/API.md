@@ -31,7 +31,7 @@ Identities are permanently masked; SMS observations are redacted events, not pla
 
 Each observation carries `source=demo|shielded|unknown`; distinguish per-record provenance when state survives a mode change. Do not treat old demo observations as hardware results. 每条记录来源独立于当前服务模式，unknown不可当作已确认RF数据。
 
-Observation `kind`: `frequencies`, `imsi`, `sms`. Job `kind`: `scan`, `capture`. Band: `GSM900`, `DCS1800`. Capture mode: `imsi`, `sms`. Duration is positive and capped by `GSMSNIFFER_MAX_DURATION_SECONDS` (default 300). A scan accepts band only: omit frequency_mhz and mode. A capture requires mode and a valid in-band frequency_mhz. Pagination limit is 1–500 and offset is nonnegative. Job states are running, finished, cancelled and failed. Read the OpenAPI schema for exact field requirements and response shapes.
+Observation `kind`: `frequencies`, `imsi`, `sms`. Job `kind`: `scan`, `capture`. Band: `GSM900`, `DCS1800`. Capture mode: `imsi`, `sms`. Duration is positive and capped by `GSMSNIFFER_MAX_DURATION_SECONDS` (default 300). A scan accepts band only: omit frequency_mhz and mode. A new capture requires mode plus scan_job_id, band and frequency_mhz from a selectable GET /api/v1/frequencies row. The referenced scan must have finished or been cancelled, and its retained observation must match the current runtime mode. Manual frequencies without a matching scan are rejected. Pagination limit is 1–500 and offset is nonnegative. Job states are running, finished, cancelled and failed. Read the OpenAPI schema for exact field requirements and response shapes.
 
 Example request for the default **demo** service (synthetic output only):
 
@@ -49,3 +49,9 @@ The acknowledgment is an explicit operator assertion; it is not a measurement of
 Expect 401 for missing/invalid authentication only when authentication is enabled. Expect other 4xx for malformed JSON, invalid fields, missing job or conflicting state. Dependency failures should be treated as actionable errors, not empty successful captures. Handle non-JSON proxy errors, bounded request timeouts and retries carefully; do not blindly retry POST jobs because duplicate operations may result. Always query state before retrying.
 
 Import `postman/gsmsniffer.postman_collection.json`; configure `baseUrl` (default `http://127.0.0.1:8083`, without `/api/v1`) and optional `token` locally (leave it empty for anonymous mode). Postman默认直连后端8083，baseUrl不附加路径前缀。 Collection defaults to read-only probes; authentication assertions must follow the server-reported mode. Mutating demo examples are skipped unless allowMutations=true and the prior status request confirms demo mode. No real token is exported.
+
+## Frequency selection contract
+
+`GET /api/v1/frequencies` returns the standard envelope with `data.items` and `data.total`. Each item contains `scan_job_id`, `band`, `frequency_mhz`, `arfcn`, `cell_id`, `lac`, `mcc`, `mnc`, `power_dbm`, `source`, `timestamp`, and `selectable`. No query parameters are accepted. Newest observations win per scan/channel. Running scans remain visible with `selectable=false`.
+
+`POST /api/v1/jobs` with `kind=capture` must use the selected item's `scan_job_id`, `band`, and `frequency_mhz`, together with `mode=imsi|sms`, duration and `shielded_ack=true`. Requests with no matched selectable result return400; an active job returns409. Scan requests omit scan_job_id/mode/frequency. Observation records now include `job_id` and `band` for provenance; older history may omit these fields.
