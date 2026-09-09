@@ -116,6 +116,15 @@ GSMSNIFFER_UHD_IMAGES_PATH=/absolute/path/to/validated-uhd-images
 
 Replace `SERIAL`, `BUS` and the firmware directory using actual device discovery. The host management IP is **not** a USB USRP `addr`. The firmware directory must contain `usrp_b210_fpga.bin`, `usrp_b200_fw.hex` and `usrp_b200_bl.img` validated for this exact board/UHD combination. The container reads it through `UHD_IMAGES_DIR=/opt/uhd-images`; no firmware is flashed to EEPROM by the application. UHD may load device RAM/FPGA during device initialization.
 
+The service runs as UID 10001 and has no capabilities. Make the directory traversable and the non-secret firmware files readable before mounting; keep the parent deployment directory private.
+
+```bash
+chmod 0755 "$GSMSNIFFER_UHD_IMAGES_PATH"
+chmod 0644 "$GSMSNIFFER_UHD_IMAGES_PATH"/usrp_b210_fpga.bin \
+  "$GSMSNIFFER_UHD_IMAGES_PATH"/usrp_b200_fw.hex \
+  "$GSMSNIFFER_UHD_IMAGES_PATH"/usrp_b200_bl.img
+```
+
 ```bash
 # First verify no LTE/GSM transceiver, eNB or other receiver owns this device.
 # Do not stop another service automatically or probe a busy radio.
