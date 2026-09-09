@@ -13,7 +13,7 @@ A Go standard-library management backend with an embedded bilingual console and 
 ## 能力 / Features
 
 - 前端 `:18083` 保留同源 `/api/v1`；独立后端 `:8083` 默认启用且只提供 API、不提供界面。Both listeners are enabled by default: UI and same-origin API on `:18083`, API-only backend on `:8083`.
-- 强制 Bearer Token；支持优先读取 token 文件。Mandatory bearer authentication, file-based secrets preferred.
+- 可选 Bearer Token：未配置 Token 时免登录自动连接；配置后要求登录，token 文件优先。Optional authentication: no configured token means anonymous access; configured credentials enable bearer authentication.
 - `/api/v1` 标准包络、OpenAPI、Postman 断言。Versioned envelopes, OpenAPI and Postman checks.
 - 有界扫描/采集任务、取消与状态查询；身份永久脱敏，SMS只保留事件、不保留明文正文。Bounded jobs and cancellation; identities are permanently masked and SMS is event-only, without plaintext bodies.
 - 单一 Docker 镜像 `addxemmm/gsmsniffer:2.1` 内含 gr-gsm/tshark；默认非 root、只读根文件系统、无特权及 USB 映射。One complete image; RF device access and shielded mode remain opt-in.
@@ -25,31 +25,34 @@ A Go standard-library management backend with an embedded bilingual console and 
 Requires Docker Engine + Compose v2 on the Linux server. From the new source checkout:
 
 ```bash
-mkdir -p secrets
-umask 077
-openssl rand -hex 32 > secrets/api_token
-# Container UID 10001 needs read access; do not make the parent secrets directory public.
-# For a root-owned deployment directory, chown/chmod the token for the container:
-sudo chown 10001:10001 secrets/api_token
-sudo chmod 0400 secrets/api_token
-export GSMSNIFFER_TOKEN_PATH="$(pwd)/secrets/api_token"
+# No token is required for a trusted local deployment.
+export GSMSNIFFER_TOKEN='' # Also overrides any token in a Compose .env file.
+unset GSMSNIFFER_TOKEN_FILE
 docker compose -f deploy/docker/compose.yml up -d --build
 curl --fail http://127.0.0.1:18083/healthz
 curl --fail http://127.0.0.1:8083/healthz
 ```
 
-Open `http://127.0.0.1:18083`; use the generated token in the console. For trusted LAN access without a domain or certificate, explicitly set both `GSMSNIFFER_BIND=0.0.0.0` and `GSMSNIFFER_API_BIND=0.0.0.0` before recreating the container, then visit `http://HOST:18083`, replacing `HOST` with the server's RFC1918 private IPv4 address. HTTP transmits the bearer token and data without encryption: restrict access to trusted LAN clients and do not forward these ports to the Internet. An SSH tunnel (`ssh -L 18083:127.0.0.1:18083 USER@HOST`) or TLS reverse proxy remains available. The sample contains no server passwords or account tokens.
+Open `http://127.0.0.1:18083`; with no configured token, the console connects automatically without login. If a token is configured, enter it to connect. For trusted LAN access without a domain or certificate, explicitly set both `GSMSNIFFER_BIND=0.0.0.0` and `GSMSNIFFER_API_BIND=0.0.0.0` before recreating the container, then visit `http://HOST:18083`, replacing `HOST` with the server's RFC1918 private IPv4 address. HTTP transmits the bearer token and data without encryption: restrict access to trusted LAN clients and do not forward these ports to the Internet. An SSH tunnel (`ssh -L 18083:127.0.0.1:18083 USER@HOST`) or TLS reverse proxy remains available. The sample contains no server passwords or account tokens.
 
 默认 Compose 将两个宿主端口绑定 loopback。仅在受信任局域网使用时，可显式将上述两个 BIND 变量设为 `0.0.0.0` 并重建容器：前端 `http://HOST:18083`，后端 `http://HOST:8083/api/v1`，`HOST` 替换为服务器的 RFC1918 私有 IPv4 地址，无需域名或证书。HTTP 会明文传输 Token 与数据，须限制可信网段访问，禁止公网端口转发。前端只允许 loopback、RFC1918 私有 IPv4 上的 HTTP 登录或 HTTPS 登录；普通主机名不视为私有地址。详细命令、Token 权限、清理和回滚见 [部署指南](docs/DEPLOY.md)。
 
 ```bash
 # Development: Go 1.26; no Node build step required.
-export GSMSNIFFER_TOKEN_FILE=/absolute/path/to/api_token
+# Optional authentication: export GSMSNIFFER_TOKEN_FILE=/absolute/path/to/api_token
 export GSMSNIFFER_ADDR=127.0.0.1:18083
 export GSMSNIFFER_API_ADDR=127.0.0.1:8083
 go test ./...
 go run ./cmd/server
 ```
+
+## 可选鉴权 / Optional authentication
+
+未设置 `GSMSNIFFER_TOKEN_FILE`，且 `GSMSNIFFER_TOKEN` 未设置或为空时，前后端均免 Token 访问，控制台自动连接。**任何能访问任一管理端口的人均可读取/删除结果、创建/取消任务；免登录模式仅限可信局域网。** 网络绑定不是访问控制，请限制来源并禁止公网端口转发。
+
+Set a valid `GSMSNIFFER_TOKEN` (at least 32 characters), or preferably use `deploy/docker/compose.auth.yml` with an absolute `GSMSNIFFER_TOKEN_PATH`, to require login on both ports. A configured missing/unreadable/empty token file or a nonempty invalid token causes startup failure; it never silently enables anonymous access. `GET /api/v1/auth` publicly reports only `data.required`.
+
+启用文件鉴权的完整命令见 [部署指南](docs/DEPLOY.md#2-optional-authentication--可选鉴权)。基础 Compose 不再要求密钥文件；已有文件鉴权部署升级时须继续加载 `compose.auth.yml`，避免意外关闭鉴权。
 
 ## 文档 / Documentation
 

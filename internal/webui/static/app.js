@@ -14,12 +14,14 @@ function allowTokenTransport(location) {
   const all = (s) => Array.from(document.querySelectorAll(s));
   const messages = {
     en: {
-      workspace:'WORKSPACE',overview:'Overview',scan:'Frequency scan',capture:'Test capture',data:'Observations',api:'API reference',localLab:'Isolated laboratory',privacy:'Credentials remain only in this page’s memory.',theme:'Theme',shieldTitle:'SHIELDED ROOM / BOX ONLY',shieldBody:'Only test SIMs and devices you own or are authorized to use. Confirm effective physical shielding. Never operate in an open environment.',access:'Console access',accessNote:'Enter your server Bearer token. HTTP sends it unencrypted: use only a trusted LAN. Reconnect after reloading.',connect:'Connect',disconnect:'Disconnect',systemOverview:'Laboratory overview',overviewHint:'Updates after connecting. Scans and captures never start automatically.',refresh:'Refresh',runtimeMode:'Runtime mode',activeTask:'Active task',singleTask:'See task status below',uptime:'Uptime',awaitConnection:'Awaiting connection',demoWarning:'DEMO · New tasks in the current mode generate synthetic data. Historical observations retain their individual source labels.',taskHistory:'Task history',autoRefresh:'Updates every 5 seconds · Pauses in background',connectFirst:'Connect to the server to view data.',capabilities:'Backend capabilities',scanTitle:'Create frequency observations',scanHint:'Choose a band and duration. Results appear in Observations.',band:'Band',duration:'Duration (seconds)',ack:'I confirm that I am using only owned or authorized SIMs / devices inside an effectively shielded room or shielded box.',startScan:'Start scan',captureTitle:'Configure shielded testing',captureHint:'Collect laboratory data from test SIMs / devices only. Confirm shielding before every start.',frequency:'Frequency (MHz)',observationType:'Observation type',startCapture:'Start test',observations:'Observations',dataHint:'Data may contain test identities or messages. Restrict access and clear it when no longer needed.',clearData:'Clear all observations',frequencies:'Frequencies',previous:'Previous',next:'Next',apiTitle:'Standard HTTP interface',apiHint:'Same-origin API v1 · JSON responses · Bearer authentication',authentication:'Authentication',endpoints:'Endpoints',apiStatus:'Runtime mode, version, active task and uptime.',apiCapabilities:'Query supported backend capabilities.',apiJobs:'List tasks.',apiStart:'Create a task; shielded_ack: true is required.',apiJob:'Get a single task.',apiStop:'Stop a task.',apiData:'Paginated frequencies, imsi or sms observations.',apiClear:'Explicitly delete all observations.',responseEnvelope:'Response envelope',apiSecurity:'Use HTTPS, an SSH tunnel, or private-IP HTTP on a trusted LAN only. HTTP sends tokens unencrypted. Never commit tokens, real identities, messages or captured logs to public repositories or images.',footer:'Idle by default · Explicit start · Minimal data',offline:'Disconnected',online:'Connected',loading:'Loading…',empty:'No records yet.',idle:'Idle',synthetic:'Synthetic data only',shielded:'Shielded laboratory',failed:'Request failed',authRequired:'Enter a Bearer token first.',started:'Task created.',stopped:'Stop requested.',confirmStop:'Stop this task?',confirmClear:'Permanently delete ALL observations? This action cannot be undone.',cleared:'Observations cleared.',stop:'Stop',id:'Task ID',kind:'Kind',state:'State',startedAt:'Started',endedAt:'Ended',error:'Error',actions:'Actions',timestamp:'Time',arfcn:'ARFCN',frequency_mhz:'MHz',cell_id:'Cell ID',lac:'LAC',mcc:'MCC',mnc:'MNC',power_dbm:'dBm',identity:'Identity',text:'Message',total:'Total',unsafeToken:'HTTP login requires a private LAN IP or loopback. For other addresses, use HTTPS.',ackRequired:'Confirm the shielded test conditions first.',taskError:'Task error',demoLabel:'DEMO / SYNTHETIC',source:'Source',sourceDemo:'Demo / synthetic',sourceShielded:'Shielded lab',sourceUnknown:'Unknown source'
+      workspace:'WORKSPACE',overview:'Overview',scan:'Frequency scan',capture:'Test capture',data:'Observations',api:'API reference',localLab:'Isolated laboratory',privacy:'Credentials remain only in this page’s memory.',theme:'Theme',shieldTitle:'SHIELDED ROOM / BOX ONLY',shieldBody:'Only test SIMs and devices you own or are authorized to use. Confirm effective physical shielding. Never operate in an open environment.',access:'Console access',accessNote:'Enter your server Bearer token. HTTP sends it unencrypted: use only a trusted LAN. Reconnect after reloading.',connect:'Connect',disconnect:'Disconnect',systemOverview:'Laboratory overview',overviewHint:'Updates after connecting. Scans and captures never start automatically.',refresh:'Refresh',runtimeMode:'Runtime mode',activeTask:'Active task',singleTask:'See task status below',uptime:'Uptime',awaitConnection:'Awaiting connection',demoWarning:'DEMO · New tasks in the current mode generate synthetic data. Historical observations retain their individual source labels.',taskHistory:'Task history',autoRefresh:'Updates every 5 seconds · Pauses in background',connectFirst:'Connect to the server to view data.',capabilities:'Backend capabilities',scanTitle:'Create frequency observations',scanHint:'Choose a band and duration. Results appear in Observations.',band:'Band',duration:'Duration (seconds)',ack:'I confirm that I am using only owned or authorized SIMs / devices inside an effectively shielded room or shielded box.',startScan:'Start scan',captureTitle:'Configure shielded testing',captureHint:'Collect laboratory data from test SIMs / devices only. Confirm shielding before every start.',frequency:'Frequency (MHz)',observationType:'Observation type',startCapture:'Start test',observations:'Observations',dataHint:'Data may contain test identities or messages. Restrict access and clear it when no longer needed.',clearData:'Clear all observations',frequencies:'Frequencies',previous:'Previous',next:'Next',apiTitle:'Standard HTTP interface',apiHint:'Same-origin API v1 · JSON responses · Optional Bearer authentication',authentication:'Authentication',endpoints:'Endpoints',apiStatus:'Runtime mode, version, active task and uptime.',apiCapabilities:'Query supported backend capabilities.',apiJobs:'List tasks.',apiStart:'Create a task; shielded_ack: true is required.',apiJob:'Get a single task.',apiStop:'Stop a task.',apiData:'Paginated frequencies, imsi or sms observations.',apiClear:'Explicitly delete all observations.',responseEnvelope:'Response envelope',apiSecurity:'Use HTTPS, an SSH tunnel, or private-IP HTTP on a trusted LAN only. HTTP sends tokens unencrypted. Never commit tokens, real identities, messages or captured logs to public repositories or images.',footer:'Idle by default · Explicit start · Minimal data',offline:'Disconnected',online:'Connected',loading:'Loading…',empty:'No records yet.',idle:'Idle',synthetic:'Synthetic data only',shielded:'Shielded laboratory',failed:'Request failed',authRequired:'Enter a Bearer token first.',started:'Task created.',stopped:'Stop requested.',confirmStop:'Stop this task?',confirmClear:'Permanently delete ALL observations? This action cannot be undone.',cleared:'Observations cleared.',stop:'Stop',id:'Task ID',kind:'Kind',state:'State',startedAt:'Started',endedAt:'Ended',error:'Error',actions:'Actions',timestamp:'Time',arfcn:'ARFCN',frequency_mhz:'MHz',cell_id:'Cell ID',lac:'LAC',mcc:'MCC',mnc:'MNC',power_dbm:'dBm',identity:'Identity',text:'Message',total:'Total',unsafeToken:'HTTP login requires a private LAN IP or loopback. For other addresses, use HTTPS.',ackRequired:'Confirm the shielded test conditions first.',taskError:'Task error',demoLabel:'DEMO / SYNTHETIC',source:'Source',sourceDemo:'Demo / synthetic',sourceShielded:'Shielded lab',sourceUnknown:'Unknown source'
     },
     zh: {offline:'未连接',online:'已连接',loading:'加载中…',empty:'暂无记录。',idle:'空闲',synthetic:'仅合成演示数据',shielded:'屏蔽实验环境',failed:'请求失败',authRequired:'请先输入 Bearer token 并连接。',started:'任务已创建。',stopped:'已请求停止任务。',confirmStop:'确认停止此任务？',confirmClear:'永久删除全部观测数据？此操作不可撤销。',cleared:'观测数据已清空。',stop:'停止',id:'任务 ID',kind:'类型',state:'状态',startedAt:'开始时间',endedAt:'结束时间',error:'错误',actions:'操作',timestamp:'时间',arfcn:'ARFCN',frequency_mhz:'MHz',cell_id:'小区 ID',lac:'LAC',mcc:'MCC',mnc:'MNC',power_dbm:'dBm',identity:'身份',text:'消息',total:'总计',unsafeToken:'HTTP 登录仅支持局域网私有 IP 或本机地址；其他地址请使用 HTTPS。',ackRequired:'请先确认屏蔽实验条件。',taskError:'任务错误',demoLabel:'演示 / 合成数据',source:'数据来源',sourceDemo:'演示 / 合成',sourceShielded:'屏蔽实验',sourceUnknown:'来源未知'}
   };
   all('[data-i18n]').forEach(el => { messages.zh[el.dataset.i18n] = el.textContent; });
   let lang = 'zh', token = '', panel = 'overview', connected = false, status = null, jobItems = [], observationData = null;
+  let authRequired = true, authKnown = false;
+  const canRequest = () => controller !== null && (!authRequired || token !== '');
   let offset = 0, timer = null, refreshing = false, controller = null, generation = 0, mutating = false;
   const t = (key) => messages[lang][key] || key;
   const set = (selector, value) => { $(selector).textContent = value == null ? '—' : String(value); };
@@ -27,7 +29,7 @@ function allowTokenTransport(location) {
   const formatTime = (value) => { if (!value) return '—'; const d = new Date(value); return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-GB'); };
   function connection(value) { connected = value; set('#connection',t(value ? 'online' : 'offline')); $('#connection').classList.toggle('online',value); }
   async function api(path, options = {}) {
-    if (!token) throw new Error(t('authRequired'));
+    if (!canRequest()) throw new Error(t('authRequired'));
     const requestController = new AbortController(), parentSignal = controller?.signal;
     const abort = () => requestController.abort();
     parentSignal?.addEventListener('abort',abort,{once:true});
@@ -35,7 +37,7 @@ function allowTokenTransport(location) {
     let timedOut = false;
     const timeout = setTimeout(() => {timedOut=true; abort();},15000);
     try {
-      const response = await fetch('/api/v1' + path, { ...options, signal: requestController.signal, headers: { 'Authorization':'Bearer ' + token, ...(options.body ? {'Content-Type':'application/json'} : {}) }, cache:'no-store' });
+      const response = await fetch('/api/v1' + path, { ...options, signal: requestController.signal, headers: { ...(authRequired && token ? {'Authorization':'Bearer ' + token} : {}), ...(options.body ? {'Content-Type':'application/json'} : {}) }, cache:'no-store' });
       let envelope;
       try { envelope = await response.json(); } catch(error) { if(error.name==='AbortError') throw error; throw new Error(t('failed') + ' · HTTP ' + response.status); }
       if (!response.ok) { if (response.status === 401 || response.status === 403) connection(false); throw new Error((envelope.message || t('failed')) + (envelope.request_id ? ' [' + envelope.request_id + ']' : '')); }
@@ -76,9 +78,9 @@ function allowTokenTransport(location) {
     table('#observations',cols,rows); const total=Number(observationData.total)||0;
     set('#data-count',t('total')+' '+total); set('#page-index',Math.floor(offset/100)+1); $('#previous').disabled=offset===0; $('#next').disabled=offset+100>=total;
   }
-  function schedule() { clearTimeout(timer); if(token && !document.hidden) timer=setTimeout(refresh,5000); }
+  function schedule() { clearTimeout(timer); if(canRequest() && !document.hidden) timer=setTimeout(refresh,5000); }
   async function refresh() {
-    if (!token || document.hidden || refreshing || mutating) return;
+    if (!canRequest() || document.hidden || refreshing || mutating) return;
     refreshing=true; const epoch=generation; const currentOffset=offset, currentKind=$('#data-kind').value;
     $('#refresh').disabled=true;
     try {
@@ -96,17 +98,17 @@ function allowTokenTransport(location) {
   }
   async function mutate(work) {
     if(mutating) return;
-    if(!token) {notify(t('authRequired'),true); return;}
+    if(!canRequest()) {notify(t('authRequired'),true); return;}
     mutating=true; all('.job-form button[type=submit]').forEach(el=>el.disabled=true); $('#clear-data').disabled=true;
     try {await work();} catch(error) {if(error.name!=='AbortError') notify(error.message,true);} finally {mutating=false; all('.job-form button[type=submit]').forEach(el=>el.disabled=false); $('#clear-data').disabled=false; await refresh();}
   }
   all('[data-panel]').forEach(button => button.addEventListener('click',() => { panel=button.dataset.panel; all('.panel').forEach(el=>el.classList.toggle('hidden',el.id!=='panel-'+panel)); all('.nav').forEach(el=>el.classList.toggle('active',el===button)); set('#page-title',t(panel)); }));
-  $('#language').addEventListener('click',() => {lang=lang==='zh'?'en':'zh'; document.documentElement.lang=lang==='zh'?'zh-CN':'en'; all('[data-i18n]').forEach(el=>el.textContent=t(el.dataset.i18n)); set('#language',lang==='zh'?'EN':'中文'); set('#page-title',t(panel)); connection(connected); renderStatus(); if(token) {renderJobs(); renderData();} });
+  $('#language').addEventListener('click',() => {lang=lang==='zh'?'en':'zh'; document.documentElement.lang=lang==='zh'?'zh-CN':'en'; all('[data-i18n]').forEach(el=>el.textContent=t(el.dataset.i18n)); set('#language',lang==='zh'?'EN':'中文'); set('#page-title',t(panel)); connection(connected); renderStatus(); renderAuth(); if(canRequest()) {renderJobs(); renderData();} });
   $('#theme').addEventListener('click',() => {document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';});
   function disconnect() { generation++; clearTimeout(timer); controller?.abort(); controller=null; token=''; $('#token').value=''; status=null; jobItems=[]; observationData=null; connection(false); ['#mode','#active-job','#uptime','#version','#capabilities','#data-count'].forEach(s=>set(s,'—')); set('#mode-note',t('awaitConnection')); ['#jobs','#observations'].forEach(s=>{$(s).replaceChildren(); $(s).classList.add('empty'); set(s,t('connectFirst'));}); $('#demo-banner').classList.add('hidden'); offset=0; set('#page-index','1'); $('#previous').disabled=true; $('#next').disabled=true; all('.ack input').forEach(el=>el.checked=false); }
   $('#disconnect').addEventListener('click',() => {disconnect(); $('#notice').classList.add('hidden');});
-  $('#auth-form').addEventListener('submit',async(event) => { event.preventDefault(); const value=$('#token').value.trim(); if(!value) return;
-    if(!allowTokenTransport(location)) {notify(t('unsafeToken'),true); return;}
+  $('#auth-form').addEventListener('submit',async(event) => { event.preventDefault(); if(!authKnown) {await bootstrapAuth(); return;} const value=$('#token').value.trim(); if(authRequired && !value) return;
+    if(authRequired && !allowTokenTransport(location)) {notify(t('unsafeToken'),true); return;}
     disconnect(); token=value; controller=new AbortController(); $('#notice').classList.add('hidden'); set('#jobs',t('loading')); set('#observations',t('loading')); await refresh();
   });
   all('.job-form').forEach(form => form.addEventListener('submit',event => {event.preventDefault(); if(!form.reportValidity()) return; const values=new FormData(form); if(!form.elements.shielded_ack.checked) {notify(t('ackRequired'),true); return;}
@@ -117,10 +119,34 @@ function allowTokenTransport(location) {
   function frequencyBand() {const dcs=$('#capture-form select[name=band]').value==='DCS1800', input=$('#capture-form input[name=frequency_mhz]'); input.min=dcs?'1805.2':'925.2'; input.max=dcs?'1879.8':'959.8'; input.value=dcs?'1845':'945';}
   $('#capture-form select[name=band]').addEventListener('change',frequencyBand); frequencyBand();
   $('#clear-data').addEventListener('click',()=>mutate(async()=>{if(!window.confirm(t('confirmClear'))) return; await api('/observations',{method:'DELETE'}); offset=0; notify(t('cleared'));}));
-  $('#refresh').addEventListener('click',()=>{if(!token) notify(t('authRequired'),true); else refresh();});
-  $('#data-kind').addEventListener('change',()=>{offset=0; observationData=null; set('#observations',token?t('loading'):t('connectFirst')); refresh();});
+  $('#refresh').addEventListener('click',()=>{if(!canRequest()) notify(t('authRequired'),true); else refresh();});
+  $('#data-kind').addEventListener('change',()=>{offset=0; observationData=null; set('#observations',canRequest()?t('loading'):t('connectFirst')); refresh();});
   $('#previous').addEventListener('click',()=>{offset=Math.max(0,offset-100); refresh();}); $('#next').addEventListener('click',()=>{offset+=100; refresh();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden) clearTimeout(timer); else refresh();});
   window.addEventListener('pagehide',()=>{clearTimeout(timer); controller?.abort(); token='';});
+  function renderAuth() {
+    $('#auth-form').classList.toggle('hidden', authKnown && !authRequired);
+    $('#token').required = authKnown && authRequired;
+    $('#token').disabled = !authKnown || !authRequired;
+    if(authKnown && !authRequired) {
+      $('[data-i18n="access"]').textContent = lang === 'zh' ? '免登录模式' : 'Anonymous access';
+      $('[data-i18n="accessNote"]').textContent = lang === 'zh' ? '服务器未配置 Token，自动连接模式。能访问服务的人均可操作；仅限可信局域网。' : 'No token is configured. Automatic connection mode. Anyone who can reach this service can manage it; trusted LAN only.';
+    }
+  }
+  async function bootstrapAuth() {
+    const timeoutController = new AbortController();
+    const timeout = setTimeout(() => timeoutController.abort(), 15000);
+    try {
+      const response = await fetch('/api/v1/auth', {cache:'no-store', signal:timeoutController.signal});
+      const envelope = await response.json();
+      if(!response.ok || envelope.code !== 'ok' || typeof envelope.data?.required !== 'boolean') throw new Error('Authentication configuration unavailable');
+      authRequired = envelope.data.required; authKnown = true;
+      renderAuth();
+      if(!authRequired) {controller = new AbortController(); await refresh();}
+    } catch(error) {notify(error.message || t('failed'),true);}
+    finally {clearTimeout(timeout);}
+  }
   $('#previous').disabled=true; $('#next').disabled=true;
+  renderAuth();
+  bootstrapAuth();
 })();

@@ -5,7 +5,7 @@ Use synthetic fixtures only. Keep every RF experiment within owned test SIM/devi
 1. Use Go 1.26; run `gofmt`, `go vet ./...`, `go test ./...` and `go test -race ./...` on a supported host.
 2. Update OpenAPI, Postman checks and bilingual docs when changing an endpoint.
 3. Add tests for validation, authentication, cancellation, redaction and error paths.
-4. Preserve default demo mode, mandatory authentication and no startup job. Shell command interpolation must not be introduced for request parameters.
+4. Preserve default demo mode, explicit optional-authentication semantics and no startup job. Missing configuration permits anonymous access; malformed configured credentials must fail startup, never downgrade to anonymous access. Shell command interpolation must not be introduced for request parameters.
 5. Run `python scripts/release_export.py --output release-export` and review the resulting manifest before publication.
 6. Describe what was actually tested, separately from tests needing RF hardware.
 

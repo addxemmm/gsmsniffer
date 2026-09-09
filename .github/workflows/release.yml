@@ -45,6 +45,7 @@ jobs:
           go test ./...
           go test -race ./...
           go build ./cmd/server
+          node scripts/test_web_auth.js
           node scripts/test_web_transport.js
           python3 scripts/test_hub_tags.py
           python3 scripts/test_release_export.py
@@ -52,27 +53,9 @@ jobs:
       - name: Build the complete image without registry access
         run: |
           docker build --target runtime --build-arg VERSION="$(cat VERSION)" --build-arg REVISION="$GITHUB_SHA" -f deploy/docker/Dockerfile -t gsmsniffer:verify .
-      - name: Demo container read-only smoke (no RF)
-        shell: bash
-        run: |
-          set -euo pipefail
-          TOKEN=$(openssl rand -hex 32)
-          echo "::add-mask::$TOKEN"
-          printf '%s\n' "$TOKEN" > "$RUNNER_TEMP/gsmsniffer-token"
-          chmod 0444 "$RUNNER_TEMP/gsmsniffer-token"
-          trap 'docker rm -f gsmsniffer-ci >/dev/null 2>&1 || true; rm -f "$RUNNER_TEMP/gsmsniffer-token"' EXIT
-          docker run -d --name gsmsniffer-ci --read-only --cap-drop ALL --security-opt no-new-privileges \
-            --tmpfs /tmp:rw,noexec,nosuid,size=64m \
-            --tmpfs /var/lib/gsmsniffer:rw,uid=10001,gid=10001,mode=0700 \
-            -p 127.0.0.1:18083:18083 -p 127.0.0.1:8083:8083 \
-            --mount "type=bind,src=$RUNNER_TEMP/gsmsniffer-token,dst=/run/secrets/api_token,readonly" \
-            -e GSMSNIFFER_TOKEN_FILE=/run/secrets/api_token gsmsniffer:verify
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent http://127.0.0.1:18083/healthz >/dev/null; then break; fi
-            sleep 1
-          done
-          export TOKEN BASE=http://127.0.0.1:18083 API_BASE=http://127.0.0.1:8083
-          bash scripts/smoke.sh
+      - name: Anonymous and authenticated demo smoke (no RF)
+        run: bash scripts/container_smoke.sh gsmsniffer:verify
+
   publish:
     needs: validate
     if: inputs.publish == true

@@ -13,11 +13,9 @@ services:
       GSMSNIFFER_ADDR: ":18083"
       GSMSNIFFER_API_ADDR: ":8083"
       GSMSNIFFER_MODE: "${GSMSNIFFER_MODE:-demo}"
-      GSMSNIFFER_TOKEN_FILE: /run/secrets/api_token
+      GSMSNIFFER_TOKEN: "${GSMSNIFFER_TOKEN:-}"
       GSMSNIFFER_DATA_DIR: /var/lib/gsmsniffer
       GSMSNIFFER_MAX_DURATION_SECONDS: "300"
-    secrets:
-      - api_token
     volumes:
       - app_data:/var/lib/gsmsniffer
     read_only: true
@@ -28,8 +26,5 @@ services:
     restart: "no"
     stop_grace_period: 15s
     init: true
-secrets:
-  api_token:
-    file: ${GSMSNIFFER_TOKEN_PATH:?Set GSMSNIFFER_TOKEN_PATH to a token file}
 volumes:
   app_data:

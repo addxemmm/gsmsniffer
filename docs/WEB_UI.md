@@ -1,8 +1,8 @@
 # Web 控制台 / Web console
 
-The embedded console is served at `/` on port 18083. The independent API-only backend defaults to port 8083 and does not serve the console (`/` returns 404). It shares its origin with `/api/v1`, avoiding a separate web-server or cross-origin token configuration. Select Chinese or English, enter your bearer token, and inspect status and capabilities first.
+The embedded console is served at `/` on port 18083. The independent API-only backend defaults to port 8083 and does not serve the console (`/` returns 404). It shares its origin with `/api/v1`, avoiding a separate web-server or cross-origin token configuration. Select Chinese or English and inspect status and capabilities first. The console queries public `/api/v1/auth`: no configured token means automatic connection without a login form; configured authentication requires a bearer token.
 
-控制台默认18083，使用同源 `/api/v1` 接口；独立后端默认8083且只提供API，两个监听器默认启用。先确认服务模式、依赖状态和 Token，再操作任务。初次验收只运行 demo；演示频点和脱敏身份不是真实测量。
+控制台默认18083，使用同源 `/api/v1` 接口；独立后端默认8083且只提供API，两个监听器默认启用。先确认服务模式、依赖状态及是否启用鉴权，再操作任务。未配置 Token 时免登录自动连接；任一可访问管理端口的人均可操作任务和数据。初次验收只运行 demo；演示频点和脱敏身份不是真实测量。
 
 Recommended operator sequence:
 
@@ -11,7 +11,7 @@ Recommended operator sequence:
 3. Choose a supported band, job type, frequency and bounded duration. Acknowledge physical isolation only after checking it.
 4. Start once, monitor the returned job ID, and use cancel to stop a running job.
 5. Inspect redacted observations, then clear them when no longer needed. Avoid sharing screenshots containing tokens or unredacted data.
-6. End the session and remove token access from a shared browser. Do not paste tokens into issue reports.
+6. When using authentication, end the session and remove token access from a shared browser. In anonymous mode, disconnecting the page does not revoke API access. Do not paste tokens into issue reports.
 
 若界面报错，先检查 HTTP 状态和 request_id、Token 文件、容器日志、`/healthz`，再检查能力接口。独立API监听器默认8083且已启用；界面仍走18083同源API，不依赖浏览器跨域访问8083。
 
@@ -21,6 +21,6 @@ Recommended operator sequence:
 
 The console allows HTTP token submission on loopback and literal RFC1918 private IPv4 addresses, and allows HTTPS. Public HTTP addresses and ordinary hostnames are rejected for token submission; a hostname resolving to a private address is not automatically treated as private. Use the server's private IPv4 address for LAN HTTP, or use HTTPS/an SSH tunnel for other access patterns.
 
-**HTTP 会明文传输 Token 和数据，只适合可信局域网。** 限制端口来源并禁止公网端口转发；浏览器的地址检查不构成网络隔离。扩大监听范围不会关闭 API 鉴权，也不会启动 RF 任务。HTTP transmits tokens and data without encryption; restrict access to trusted clients. Browser checks do not replace firewall controls or authenticate the network.
+**HTTP 会明文传输 Token 和数据，只适合可信局域网。** 限制端口来源并禁止公网端口转发；浏览器的地址检查不构成网络隔离。扩大监听范围不改变服务端可选鉴权配置，也不会启动 RF 任务；未配置 Token 时两端口均允许匿名管理。HTTP transmits tokens and data without encryption; restrict access to trusted clients. Browser checks do not replace firewall controls or authenticate the network.
 
 A responsive layout and bilingual labels are UI features, not a certification of accessibility or RF operation; record browser and viewport in manual acceptance reports.

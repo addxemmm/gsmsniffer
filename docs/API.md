@@ -1,10 +1,10 @@
 # REST API v1
 
-Direct backend base URL: `http://127.0.0.1:8083/api/v1`. The frontend retains the same-origin API at `http://127.0.0.1:18083/api/v1`; it does not make cross-origin browser requests to port 8083. Both listeners are enabled by default. The backend is API-only: `/` returns 404, not the Web console. All API routes require `Authorization: Bearer TOKEN`, including the OpenAPI endpoint. Health routes `/healthz` and `/readyz` are unauthenticated and expose only liveness/readiness.
+Direct backend base URL: `http://127.0.0.1:8083/api/v1`. The frontend retains the same-origin API at `http://127.0.0.1:18083/api/v1`; it does not make cross-origin browser requests to port 8083. Both listeners are enabled by default. The backend is API-only: `/` returns 404, not the Web console. When a token is configured, management API routes (including OpenAPI) require `Authorization: Bearer TOKEN`. Without configured credentials, they allow anonymous access. `GET /api/v1/auth` is always public and returns `data.required` (boolean), not the token. Health routes `/healthz` and `/readyz` are unauthenticated and expose only liveness/readiness.
 
 For explicitly enabled trusted-LAN deployment, replace the host with `HOST` (the server's RFC1918 private IPv4 address): `http://HOST:8083/api/v1`. HTTP sends tokens and data without encryption; restrict access to trusted clients and do not forward ports to the Internet. See [Deployment](DEPLOY.md) for both bind variables. 前端仍使用 `http://HOST:18083` 同源 API，无需跨域配置。
 
-所有 API 均须 Bearer 鉴权；Token 不应放入 URL、日志或截图。后端监听器默认 `GSMSNIFFER_API_ADDR=:8083`，只提供API；前端默认 `GSMSNIFFER_ADDR=:18083` 并保留同源API，避免跨域。两个监听器均默认启用，使用相同Token。
+鉴权由服务端配置决定：未配置 Token 则匿名访问；配置有效 Token 后管理 API 均须 Bearer 鉴权，公开 `/auth` 除外。匿名客户端同样可以创建/取消任务及读取/删除结果，仅用于可信局域网。Token 不应放入 URL、日志或截图。后端监听器默认 `GSMSNIFFER_API_ADDR=:8083`，只提供API；前端默认 `GSMSNIFFER_ADDR=:18083` 并保留同源API，避免跨域。两个监听器均默认启用，共用鉴权模式及已配置的 Token。
 
 Standard JSON envelope (OpenAPI alone returns its native schema representation):
 
@@ -16,6 +16,7 @@ Use HTTP status as the primary success/error signal. Clients should preserve `re
 
 | Method | Path | Purpose |
 |---|---|---|
+| GET | `/auth` | Public authentication mode: `data.required` / 是否要求登录 |
 | GET | `/status` | Service mode/status / 服务状态 |
 | GET | `/capabilities` | Available adapters/dependencies / 能力 |
 | GET | `/jobs` | List jobs / 任务列表 |
@@ -35,9 +36,9 @@ Observation `kind`: `frequencies`, `imsi`, `sms`. Job `kind`: `scan`, `capture`.
 Example request for the default **demo** service (synthetic output only):
 
 ```bash
-# Set TOKEN locally; do not save a real value in this document.
+# Token-free deployment; when authentication is enabled, add -H "Authorization: Bearer $TOKEN".
 curl --fail-with-body http://127.0.0.1:8083/api/v1/jobs \
-  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -H 'Content-Type: application/json' \
   -d '{"kind":"scan","band":"GSM900","duration_seconds":60,"shielded_ack":true}'
 ```
 
@@ -45,6 +46,6 @@ The acknowledgment is an explicit operator assertion; it is not a measurement of
 
 ## Errors and client behavior / 错误处理
 
-Expect 4xx for missing/invalid authentication, malformed JSON, invalid fields, missing job or conflicting state. Dependency failures should be treated as actionable errors, not empty successful captures. Handle non-JSON proxy errors, bounded request timeouts and retries carefully; do not blindly retry POST jobs because duplicate operations may result. Always query state before retrying.
+Expect 401 for missing/invalid authentication only when authentication is enabled. Expect other 4xx for malformed JSON, invalid fields, missing job or conflicting state. Dependency failures should be treated as actionable errors, not empty successful captures. Handle non-JSON proxy errors, bounded request timeouts and retries carefully; do not blindly retry POST jobs because duplicate operations may result. Always query state before retrying.
 
-Import `postman/gsmsniffer.postman_collection.json`; configure `baseUrl` (default `http://127.0.0.1:8083`, without `/api/v1`) and `token` locally. Postman默认直连后端8083，baseUrl不附加路径前缀。 Collection defaults to read-only probes and an unauthorized-access test. Mutating demo examples are skipped unless allowMutations=true and the prior status request confirms demo mode. No real token is exported.
+Import `postman/gsmsniffer.postman_collection.json`; configure `baseUrl` (default `http://127.0.0.1:8083`, without `/api/v1`) and optional `token` locally (leave it empty for anonymous mode). Postman默认直连后端8083，baseUrl不附加路径前缀。 Collection defaults to read-only probes; authentication assertions must follow the server-reported mode. Mutating demo examples are skipped unless allowMutations=true and the prior status request confirms demo mode. No real token is exported.

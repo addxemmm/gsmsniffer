@@ -18,7 +18,7 @@ The management backend is Go 1.26 using the standard library; the frontend is em
 
 - Default `demo` returns explicitly synthetic observations and never requires hardware.
 - `shielded` must be selected explicitly. Jobs require acknowledgment and bounded duration; startup never starts a job.
-- Token file takes precedence over the environment token. Only `/healthz` and `/readyz` bypass API authentication.
+- Token file takes precedence over the environment token. With no file configured and an unset/empty environment token, management routes allow anonymous access. Configured invalid credentials fail startup. A valid token enables bearer authentication on both listeners. `/healthz`, `/readyz` and `GET /api/v1/auth` are public; the auth endpoint reports only `data.required`.
 - Identities are permanently masked; SMS is event-only and plaintext message bodies are not retained. Never use production subscriber data for screenshots, fixtures or issues.
 - Both listeners default on: `GSMSNIFFER_ADDR=:18083` serves the embedded UI and same-origin API; `GSMSNIFFER_API_ADDR=:8083` is API-only (`/` returns 404). Both use the same authentication and manager. 双监听默认启用，共用鉴权和任务管理；前端保持同源调用，不跨域直连8083。
 - Container has a writable data volume and temporary filesystem; root filesystem is read-only. No default host networking, privileged mode or USB forwarding.

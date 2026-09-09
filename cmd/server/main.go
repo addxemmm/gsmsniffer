@@ -13,6 +13,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"unicode"
 
 	"gsmsniffer/internal/api"
 	"gsmsniffer/internal/lab"
@@ -54,17 +55,36 @@ func main() {
 	}
 }
 
-func run() error {
-	token := strings.TrimSpace(os.Getenv("GSMSNIFFER_TOKEN"))
+// loadToken disables authentication only when neither token source is configured.
+// An explicitly configured file must remain valid, even if the environment token is valid.
+func loadToken() (string, error) {
+	raw := os.Getenv("GSMSNIFFER_TOKEN")
+	configured := raw != ""
 	if path := os.Getenv("GSMSNIFFER_TOKEN_FILE"); path != "" {
+		configured = true
 		data, err := os.ReadFile(path)
 		if err != nil {
-			return fmt.Errorf("read token file: %w", err)
+			return "", fmt.Errorf("read token file: %w", err)
 		}
-		token = strings.TrimSpace(string(data))
+		raw = string(data)
 	}
-	if len(token) < 32 || strings.ContainsAny(token, " \r\n\t") {
-		return errors.New("configure GSMSNIFFER_TOKEN_FILE or GSMSNIFFER_TOKEN with at least 32 non-whitespace characters")
+	if !configured {
+		return "", nil
+	}
+	token := strings.TrimSpace(raw)
+	if len(token) < 32 || strings.ContainsFunc(token, unicode.IsSpace) {
+		return "", errors.New("configured GSMSNIFFER_TOKEN_FILE or GSMSNIFFER_TOKEN must contain at least 32 non-whitespace characters")
+	}
+	return token, nil
+}
+
+func run() error {
+	token, err := loadToken()
+	if err != nil {
+		return err
+	}
+	if token == "" {
+		slog.Warn("management authentication disabled; all clients with network access can manage this service; use only on a trusted network")
 	}
 	maxDuration, err := strconv.Atoi(env("GSMSNIFFER_MAX_DURATION_SECONDS", "300"))
 	if err != nil || maxDuration < 1 || maxDuration > 3600 {

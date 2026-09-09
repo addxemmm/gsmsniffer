@@ -3,7 +3,7 @@
   "info": {
     "title": "GSM Sniffer Shielded Laboratory API",
     "version": "2.1",
-    "description": "Only for owned test SIMs and terminals inside an RF-shielded room/enclosure. Default demo mode emits synthetic data. No task starts automatically. Identifiers and SMS contents are permanently redacted. Service health does not certify RF readiness."
+    "description": "Only for owned test SIMs and terminals inside an RF-shielded room/enclosure. Default demo mode emits synthetic data. No task starts automatically. Identifiers and SMS contents are permanently redacted. Service health does not certify RF readiness. Authentication is configuration-dependent: no token configured means anonymous management access; a configured token requires Bearer authentication. Query GET /api/v1/auth before connecting. Anonymous mode must be limited to a trusted LAN."
   },
   "servers": [
     {
@@ -26,7 +26,8 @@
   "security": [
     {
       "bearerAuth": []
-    }
+    },
+    {}
   ],
   "paths": {
     "/healthz": {
@@ -1382,6 +1383,72 @@
           }
         }
       }
+    },
+    "/api/v1/auth": {
+      "get": {
+        "operationId": "authenticationMode",
+        "summary": "Public authentication mode, never token contents",
+        "responses": {
+          "200": {
+            "description": "Whether this deployment requires Bearer authentication",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "message",
+                    "data",
+                    "request_id"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AuthMode"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Cross-origin management request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
     }
   },
   "components": {
@@ -1443,7 +1510,7 @@
           },
           "frequency_mhz": {
             "type": "number",
-            "description": "Capture only: GSM900 925.2\u2013959.8 MHz or DCS1800 1805.2\u20131879.8 MHz, aligned to 0.2 MHz. Omit for scan."
+            "description": "Capture only: GSM900 925.2–959.8 MHz or DCS1800 1805.2–1879.8 MHz, aligned to 0.2 MHz. Omit for scan."
           },
           "mode": {
             "type": "string",
@@ -1606,6 +1673,9 @@
               }
             ],
             "nullable": true
+          },
+          "auth_required": {
+            "type": "boolean"
           }
         }
       },
@@ -1711,6 +1781,18 @@
         "properties": {
           "ready": {
             "type": "boolean"
+          }
+        }
+      },
+      "AuthMode": {
+        "type": "object",
+        "required": [
+          "required"
+        ],
+        "properties": {
+          "required": {
+            "type": "boolean",
+            "description": "True only when server has a configured token"
           }
         }
       }

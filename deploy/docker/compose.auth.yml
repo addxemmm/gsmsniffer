@@ -1,0 +1,11 @@
+# Optional token-file authentication. Omit this overlay for anonymous access.
+# A configured missing/empty/invalid file fails startup, never disables auth.
+services:
+  gsmsniffer:
+    environment:
+      GSMSNIFFER_TOKEN_FILE: /run/secrets/api_token
+    secrets:
+      - api_token
+secrets:
+  api_token:
+    file: ${GSMSNIFFER_TOKEN_PATH:?Set GSMSNIFFER_TOKEN_PATH to a token file}

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "GSM-SNIFFER v2 read-only acceptance",
-    "description": "Owned test SIMs/terminals only inside RF-shielded rooms/enclosures. Read-only by default. Set allowMutations=true explicitly for demo-only job/cancel/clear examples; run status first. No shared token values. Default baseUrl is the API-only backend on port 8083; the Web console remains on 18083 with same-origin API. 默认直连后端8083，前端18083保留同源API。",
+    "description": "Owned test SIMs/terminals only inside RF-shielded rooms/enclosures. Read-only by default. Set allowMutations=true explicitly for demo-only job/cancel/clear examples; run status first. No shared token values. Default baseUrl is the API-only backend on port 8083; the Web console remains on 18083 with same-origin API. 默认直连后端8083，前端18083保留同源API。 Authentication is optional: leave token empty for an anonymous deployment; set it when /api/v1/auth returns required=true.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -37,6 +37,28 @@
     }
   ],
   "item": [
+    {
+      "name": "Authentication mode (public)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/auth",
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Auth metadata available', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('authRequired', String(pm.response.json().data.required));"
+            ]
+          }
+        }
+      ]
+    },
     {
       "name": "Service status",
       "request": {
@@ -174,7 +196,7 @@
       ]
     },
     {
-      "name": "Reject unauthenticated API",
+      "name": "Check configured authentication mode",
       "request": {
         "method": "GET",
         "auth": {
@@ -188,7 +210,7 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('Authentication required', () => pm.response.to.have.status(401));"
+              "pm.test('Matches auth metadata', () => { const required = pm.collectionVariables.get('authRequired'); pm.expect(['true', 'false']).to.include(required); pm.response.to.have.status(required === 'true' ? 401 : 200); });"
             ]
           }
         }

@@ -1,10 +1,10 @@
 # 快速开始 / Quick start
 
 1. Read the restriction in the root README. Keep the first run in `demo`; no RF device mapping is required. 首次使用 demo，不映射硬件。
-2. Generate a random token file and set its owner to container UID 10001 as shown in README. Save the token in a password manager before changing ownership. 将 Token 保存到密码管理器，不要粘贴到共享命令或日志中。
-3. Export an absolute `GSMSNIFFER_TOKEN_PATH`, then run `docker compose -f deploy/docker/compose.yml up -d --build` from the repository root. `.env` is optional; explicitly pass `--env-file .env` if used.
+2. Choose authentication: for a trusted isolated LAN, set `GSMSNIFFER_TOKEN` empty (including any Compose environment file) and do not configure a token file. The console then connects automatically. To require login, follow the optional file-secret overlay in [Deployment](DEPLOY.md#2-optional-authentication--可选鉴权). 免登录时所有能访问管理端口的人均可管理任务及数据；请限制来源。
+3. For the no-token deployment, run `docker compose -f deploy/docker/compose.yml up -d --build` from the repository root. `.env` is optional; explicitly pass `--env-file .env` if used.
 4. Check `docker compose -f deploy/docker/compose.yml ps` and both probes: `curl --fail http://127.0.0.1:18083/healthz` and `curl --fail http://127.0.0.1:8083/healthz`. A green health check proves HTTP liveness, not RF readiness. 健康检查只证明 HTTP 服务存活。
-5. Open `http://127.0.0.1:18083` and enter the token; the API-only backend is `http://127.0.0.1:8083/api/v1`. 前端18083与后端8083默认同时启用，前端仍调用同源API。 Query capabilities/status before creating a demo job. Status must clearly indicate `demo`. 模拟数据不可作为现场测量结果。
+5. Open `http://127.0.0.1:18083` and allow automatic connection (or enter the token when authentication is configured); the API-only backend is `http://127.0.0.1:8083/api/v1`. 前端18083与后端8083默认同时启用，前端仍调用同源API。 Query capabilities/status before creating a demo job. Status must clearly indicate `demo`. 模拟数据不可作为现场测量结果。
 6. Finish with `docker compose -f deploy/docker/compose.yml down`. Do not add `-v` unless data deletion is intended. 停止服务默认保留数据卷。
 
 Use the single prebuilt image / 使用唯一预构建版本：
@@ -21,4 +21,4 @@ The image includes gr-gsm/tshark but defaults to demo without USB mapping. Compo
 
 For trusted LAN HTTP without a domain or certificate, follow [Deployment](DEPLOY.md#trusted-lan-http--受信任局域网-http): explicitly set both `GSMSNIFFER_BIND=0.0.0.0` and `GSMSNIFFER_API_BIND=0.0.0.0` in the existing deployment environment file, then recreate the same Compose project. Visit `http://HOST:18083`, with `HOST` replaced by the server's RFC1918 private IPv4 address. HTTP 明文传输 Token 与数据，仅限可信局域网并限制来源，禁止公网端口转发；默认 Compose 仍绑定 loopback。
 
-For local development use Go 1.26, `go test ./...`, and `go run ./cmd/server`, with a readable token file and both `GSMSNIFFER_ADDR=127.0.0.1:18083` and `GSMSNIFFER_API_ADDR=127.0.0.1:8083` for loopback-only local listeners. 本地开发建议两个ADDR都指定loopback；应用默认分别为 `:18083` 和 `:8083`。 Windows PowerShell uses `$env:GSMSNIFFER_TOKEN_FILE='C:\absolute\path\api_token'`.
+For local development use Go 1.26, `go test ./...`, and `go run ./cmd/server`, with an optional readable token file and both `GSMSNIFFER_ADDR=127.0.0.1:18083` and `GSMSNIFFER_API_ADDR=127.0.0.1:8083` for loopback-only local listeners. 本地开发建议两个ADDR都指定loopback；应用默认分别为 `:18083` 和 `:8083`。 Windows PowerShell uses `$env:GSMSNIFFER_TOKEN_FILE='C:\absolute\path\api_token'`.

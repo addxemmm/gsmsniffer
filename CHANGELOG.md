@@ -2,6 +2,8 @@
 
 ## 2.1 — 2026-09-09
 
+- Make authentication optional: an unset/empty environment token with no token file allows anonymous console auto-connect; configured valid credentials require login, while malformed configured credentials fail startup. Add public `/api/v1/auth` mode discovery and an opt-in file-secret Compose overlay.
+
 - Publish one complete image: `addxemmm/gsmsniffer:2.1`, including gr-gsm/tshark; no separate dependency or commit-qualified image tags.
 - Keep demo as the default, without device access or automatic jobs; the shielded Compose override selects mode and hardware permissions only.
 - Standardize frontend `18083` and API-only backend `8083`; retain loopback host bindings and `restart: "no"` (no boot startup).

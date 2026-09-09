@@ -1,4 +1,4 @@
-// Package api exposes the authenticated laboratory management contract.
+// Package api exposes the optionally authenticated laboratory management contract.
 package api
 
 import (
@@ -84,17 +84,27 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		send(404, "not_found", "Route not found", nil)
 		return
 	}
-	provided := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-	providedHash := sha256.Sum256([]byte(provided))
-	if h.opts.Token == "" || !strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") || subtle.ConstantTimeCompare(providedHash[:], h.tokenHash[:]) != 1 {
-		w.Header().Set("WWW-Authenticate", `Bearer realm="gsmsniffer"`)
-		send(401, "unauthorized", "Valid Bearer token required", nil)
-		return
-	}
 	if origin := r.Header.Get("Origin"); origin != "" {
 		u, err := url.Parse(origin)
 		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || !strings.EqualFold(u.Host, r.Host) || u.Path != "" || u.RawQuery != "" || u.User != nil || u.Fragment != "" {
 			send(403, "origin_forbidden", "Cross-origin management requests are disabled", nil)
+			return
+		}
+	}
+	if r.URL.Path == "/api/v1/auth" {
+		if r.Method != http.MethodGet {
+			methodError("GET")
+			return
+		}
+		send(200, "ok", "Authentication configuration", map[string]bool{"required": h.opts.Token != ""})
+		return
+	}
+	if h.opts.Token != "" {
+		provided := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		providedHash := sha256.Sum256([]byte(provided))
+		if !strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") || subtle.ConstantTimeCompare(providedHash[:], h.tokenHash[:]) != 1 {
+			w.Header().Set("WWW-Authenticate", `Bearer realm="gsmsniffer"`)
+			send(401, "unauthorized", "Valid Bearer token required", nil)
 			return
 		}
 	}
@@ -126,7 +136,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			methodError("GET")
 			return
 		}
-		send(200, "ok", "Service status", map[string]any{"mode": h.opts.Mode, "version": h.opts.Version, "revision": h.opts.Revision, "uptime_seconds": int(time.Since(h.opts.StartedAt).Seconds()), "active_job": h.manager.Active()})
+		send(200, "ok", "Service status", map[string]any{"mode": h.opts.Mode, "version": h.opts.Version, "revision": h.opts.Revision, "auth_required": h.opts.Token != "", "uptime_seconds": int(time.Since(h.opts.StartedAt).Seconds()), "active_job": h.manager.Active()})
 	case "/api/v1/capabilities":
 		if r.Method != http.MethodGet {
 			methodError("GET")
@@ -276,7 +286,7 @@ func auditMethod(method string) string {
 }
 func auditRoute(path string) string {
 	switch path {
-	case "/healthz", "/readyz", "/api/v1/status", "/api/v1/capabilities", "/api/v1/jobs", "/api/v1/observations", "/api/v1/openapi.json":
+	case "/healthz", "/readyz", "/api/v1/auth", "/api/v1/status", "/api/v1/capabilities", "/api/v1/jobs", "/api/v1/observations", "/api/v1/openapi.json":
 		return path
 	default:
 		if strings.HasPrefix(path, "/api/v1/jobs/") {
