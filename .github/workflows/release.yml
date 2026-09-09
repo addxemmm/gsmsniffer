@@ -9,6 +9,11 @@ on:
         required: true
         type: boolean
         default: false
+      revision_tag:
+        description: 'Publish VERSION-sha-COMMIT without replacing an existing version tag'
+        required: true
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -20,6 +25,7 @@ jobs:
     timeout-minutes: 45
     outputs:
       version: ${{ steps.version.outputs.version }}
+      image_tag: ${{ steps.version.outputs.image_tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,11 +39,15 @@ jobs:
         env:
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
+          REVISION_TAG: ${{ inputs.revision_tag }}
         run: |
           version=$(cat VERSION)
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
           if [ "$REF_TYPE" = tag ]; then test "$REF_NAME" = "v$version"; fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          image_tag="$version"
+          if [ "$REVISION_TAG" = true ]; then image_tag="$version-sha-${GITHUB_SHA:0:12}"; fi
+          echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
       - name: Test and scan before publication
         run: |
           go vet ./...
@@ -62,14 +72,14 @@ jobs:
           docker run -d --name gsmsniffer-ci --read-only --cap-drop ALL --security-opt no-new-privileges \
             --tmpfs /tmp:rw,noexec,nosuid,size=64m \
             --tmpfs /var/lib/gsmsniffer:rw,uid=10001,gid=10001,mode=0700 \
-            -p 127.0.0.1:18080:8080 \
+            -p 127.0.0.1:18083:18083 -p 127.0.0.1:8083:8083 \
             --mount "type=bind,src=$RUNNER_TEMP/gsmsniffer-token,dst=/run/secrets/api_token,readonly" \
             -e GSMSNIFFER_TOKEN_FILE=/run/secrets/api_token gsmsniffer:verify
           for attempt in $(seq 1 30); do
-            if curl --fail --silent http://127.0.0.1:18080/healthz >/dev/null; then break; fi
+            if curl --fail --silent http://127.0.0.1:18083/healthz >/dev/null; then break; fi
             sleep 1
           done
-          export TOKEN BASE=http://127.0.0.1:18080
+          export TOKEN BASE=http://127.0.0.1:18083 API_BASE=http://127.0.0.1:8083
           bash scripts/smoke.sh
   publish:
     needs: validate
@@ -101,7 +111,7 @@ jobs:
           file: deploy/docker/Dockerfile
           target: runtime
           push: true
-          tags: ${{ vars.DOCKERHUB_USERNAME }}/gsmsniffer:${{ needs.validate.outputs.version }}
+          tags: ${{ vars.DOCKERHUB_USERNAME }}/gsmsniffer:${{ needs.validate.outputs.image_tag }}
           build-args: |
             VERSION=${{ needs.validate.outputs.version }}
             REVISION=${{ github.sha }}
@@ -114,7 +124,7 @@ jobs:
           file: deploy/docker/Dockerfile
           target: shielded
           push: true
-          tags: ${{ vars.DOCKERHUB_USERNAME }}/gsmsniffer:${{ needs.validate.outputs.version }}-shielded
+          tags: ${{ vars.DOCKERHUB_USERNAME }}/gsmsniffer:${{ needs.validate.outputs.image_tag }}-shielded
           build-args: |
             VERSION=${{ needs.validate.outputs.version }}
             REVISION=${{ github.sha }}

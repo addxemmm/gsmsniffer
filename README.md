@@ -12,7 +12,7 @@ A Go standard-library management backend with an embedded bilingual console and 
 
 ## 能力 / Features
 
-- 同源 Web/API `:8080`；可选独立 API `:8083`，默认关闭。Same-origin UI/API, optional separate listener.
+- 前端 `:18083` 保留同源 `/api/v1`；独立后端 `:8083` 默认启用且只提供 API、不提供界面。Both listeners are enabled by default: UI and same-origin API on `:18083`, API-only backend on `:8083`.
 - 强制 Bearer Token；支持优先读取 token 文件。Mandatory bearer authentication, file-based secrets preferred.
 - `/api/v1` 标准包络、OpenAPI、Postman 断言。Versioned envelopes, OpenAPI and Postman checks.
 - 有界扫描/采集任务、取消与状态查询；身份永久脱敏，SMS只保留事件、不保留明文正文。Bounded jobs and cancellation; identities are permanently masked and SMS is event-only, without plaintext bodies.
@@ -33,17 +33,19 @@ sudo chown 10001:10001 secrets/api_token
 sudo chmod 0400 secrets/api_token
 export GSMSNIFFER_TOKEN_PATH="$(pwd)/secrets/api_token"
 docker compose -f deploy/docker/compose.yml up -d --build
-curl --fail http://127.0.0.1:8080/healthz
+curl --fail http://127.0.0.1:18083/healthz
+curl --fail http://127.0.0.1:8083/healthz
 ```
 
-Open `http://127.0.0.1:8080`; use the generated token in the console. Remote access should use an SSH tunnel (`ssh -L 8080:127.0.0.1:8080 USER@HOST`) or an authenticated TLS reverse proxy. Do not publish management ports directly to the Internet. The sample contains no server passwords or account tokens.
+Open `http://127.0.0.1:18083`; use the generated token in the console. Remote access should use an SSH tunnel (`ssh -L 18083:127.0.0.1:18083 USER@HOST`) or an authenticated TLS reverse proxy. Do not publish management ports directly to the Internet. The sample contains no server passwords or account tokens.
 
-打开本机控制台，输入生成的 Token。远程使用 SSH 隧道或带 TLS 的管理代理，不直接暴露管理端口。示例不包含服务器凭据。Token 文件权限、清理和回滚见 [部署指南](docs/DEPLOY.md)。
+打开 `http://127.0.0.1:18083` 控制台，输入生成的 Token；直接后端 API 使用 `http://127.0.0.1:8083/api/v1`。默认Compose将两个宿主端口均绑定loopback。远程使用 SSH 隧道或带 TLS 的管理代理，不直接暴露管理端口。示例不包含服务器凭据。Token 文件权限、清理和回滚见 [部署指南](docs/DEPLOY.md)。
 
 ```bash
 # Development: Go 1.26; no Node build step required.
 export GSMSNIFFER_TOKEN_FILE=/absolute/path/to/api_token
-export GSMSNIFFER_ADDR=127.0.0.1:8080
+export GSMSNIFFER_ADDR=127.0.0.1:18083
+export GSMSNIFFER_API_ADDR=127.0.0.1:8083
 go test ./...
 go run ./cmd/server
 ```
@@ -53,6 +55,10 @@ go run ./cmd/server
 [文档索引](docs/README.md) · [快速开始](docs/QUICKSTART.md) · [架构](docs/ARCHITECTURE.md) · [API](docs/API.md) · [Web UI](docs/WEB_UI.md) · [部署](docs/DEPLOY.md) · [迁移](docs/MIGRATION.md) · [测试](docs/TESTING.md) · [发布](docs/RELEASING.md) · [安全](SECURITY.md)
 
 ## 发布与许可 / Publication and licensing
+
+当前源码默认前端18083、后端8083；版本仍为 `2.0.0`，端口调整不改写[历史发布验收](docs/releases/2.0.0.md)或原镜像digest。使用新源码构建，或先确认包含本次调整的唯一revision镜像tag/digest，再按这些端口部署。
+
+Current source defaults to UI 18083 and backend 8083 while VERSION remains `2.0.0`. The historical release record and original image digests remain unchanged; build this source or select a confirmed unique revision image tag/digest before using these new defaults.
 
 Version `2.0.0` introduces breaking changes from the legacy tool. Repository creation, image publication and actual deployment are separate operations: workflow files alone do not prove that an image has been pushed. Docker Hub examples use `addxemmm/gsmsniffer:2.0.0`; The target namespace is confirmed; verify the tag exists before pulling.
 

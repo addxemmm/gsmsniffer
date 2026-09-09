@@ -22,6 +22,9 @@ import (
 var version = "2.0.0"
 var revision = "development"
 
+const defaultWebAddress = ":18083"
+const defaultAPIAddress = ":8083"
+
 func env(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
@@ -35,13 +38,7 @@ func main() {
 			fmt.Printf("gsmsniffer %s (%s)\n", version, revision)
 			return
 		case "healthcheck":
-			client := http.Client{Timeout: 3 * time.Second}
-			res, err := client.Get(env("GSMSNIFFER_HEALTHCHECK_URL", "http://127.0.0.1:8080/healthz"))
-			if err != nil {
-				os.Exit(1)
-			}
-			_ = res.Body.Close()
-			if res.StatusCode != 200 {
+			if err := checkHealth(); err != nil {
 				os.Exit(1)
 			}
 			return
@@ -80,21 +77,7 @@ func run() error {
 	}
 	defer manager.Close()
 	apiHandler := api.New(manager, api.Options{Token: token, Mode: mode, Version: version, Revision: revision, MaxDurationSeconds: maxDuration})
-	ui := webui.New()
-	web := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/healthz" || r.URL.Path == "/readyz" {
-			apiHandler.ServeHTTP(w, r)
-			return
-		}
-		ui.ServeHTTP(w, r)
-	})
-	server := func(addr string, handler http.Handler) *http.Server {
-		return &http.Server{Addr: addr, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 20 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 * 1024}
-	}
-	servers := []*http.Server{server(env("GSMSNIFFER_ADDR", ":8080"), web)}
-	if addr := os.Getenv("GSMSNIFFER_API_ADDR"); addr != "" {
-		servers = append(servers, server(addr, apiHandler))
-	}
+	servers := newServers(apiHandler, webui.New())
 	listeners := []net.Listener{}
 	defer func() {
 		for _, l := range listeners {
@@ -131,4 +114,60 @@ func run() error {
 		}
 	}
 	return result
+}
+
+func newServers(apiHandler, ui http.Handler) []*http.Server {
+	web := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/healthz" || r.URL.Path == "/readyz" {
+			apiHandler.ServeHTTP(w, r)
+			return
+		}
+		ui.ServeHTTP(w, r)
+	})
+	server := func(addr string, handler http.Handler) *http.Server {
+		return &http.Server{Addr: addr, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 20 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 * 1024}
+	}
+	return []*http.Server{
+		server(env("GSMSNIFFER_ADDR", defaultWebAddress), web),
+		server(env("GSMSNIFFER_API_ADDR", defaultAPIAddress), apiHandler),
+	}
+}
+
+func healthcheckURLs() ([]string, error) {
+	if override := os.Getenv("GSMSNIFFER_HEALTHCHECK_URL"); override != "" {
+		return []string{override}, nil
+	}
+	urls := make([]string, 0, 2)
+	for _, addr := range []string{env("GSMSNIFFER_ADDR", defaultWebAddress), env("GSMSNIFFER_API_ADDR", defaultAPIAddress)} {
+		host, port, err := net.SplitHostPort(addr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid healthcheck listener address: %w", err)
+		}
+		if host == "" || host == "0.0.0.0" {
+			host = "127.0.0.1"
+		} else if host == "::" {
+			host = "::1"
+		}
+		urls = append(urls, "http://"+net.JoinHostPort(host, port)+"/healthz")
+	}
+	return urls, nil
+}
+
+func checkHealth() error {
+	urls, err := healthcheckURLs()
+	if err != nil {
+		return err
+	}
+	client := http.Client{Timeout: 3 * time.Second}
+	for _, target := range urls {
+		res, err := client.Get(target)
+		if err != nil {
+			return err
+		}
+		_ = res.Body.Close()
+		if res.StatusCode != http.StatusOK {
+			return fmt.Errorf("listener healthcheck returned %d", res.StatusCode)
+		}
+	}
+	return nil
 }

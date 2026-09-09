@@ -2,22 +2,22 @@
 
 ## 1. Safe defaults / 默认配置
 
-Default Compose binds UI/API to host loopback `127.0.0.1:8080`, uses bridge networking, UID/GID 10001, a read-only root filesystem, `/tmp` tmpfs, a named data volume, dropped capabilities and `no-new-privileges`. Restart policy is `no`. No host networking, privileged mode, USB mapping or automatic job creation is present.
+Default Compose enables both listeners and binds UI/same-origin API to host loopback `127.0.0.1:18083` and the API-only backend to `127.0.0.1:8083`, uses bridge networking, UID/GID 10001, a read-only root filesystem, `/tmp` tmpfs, a named data volume, dropped capabilities and `no-new-privileges`. Restart policy is `no`. No host networking, privileged mode, USB mapping or automatic job creation is present.
 
-默认只部署demo管理台，不自动开始扫描/采集。`docker compose down`保留数据卷；`down -v`会删除数据，须明确决定后操作。
+默认同时开放宿主loopback前端18083与后端8083，仍只部署demo管理台，不自动开始扫描/采集。前端保留同源API，独立后端不提供HTML界面。`docker compose down`保留数据卷；`down -v`会删除数据，须明确决定后操作。
 
 | Variable | Default / behavior |
 |---|---|
-| `GSMSNIFFER_ADDR` | `:8080`, UI and same-origin API |
-| `GSMSNIFFER_API_ADDR` | empty/off; optional `:8083` |
+| `GSMSNIFFER_ADDR` | `:18083`, UI and same-origin API |
+| `GSMSNIFFER_API_ADDR` | `:8083`, API-only backend; enabled by default / 默认启用 |
 | `GSMSNIFFER_TOKEN_FILE` | Read token from this file; preferred over environment token |
 | `GSMSNIFFER_TOKEN` | Fallback token; do not put in image or committed `.env` |
 | `GSMSNIFFER_MODE` | `demo`; opt-in `shielded` |
 | `GSMSNIFFER_DATA_DIR` | `/var/lib/gsmsniffer` |
 | `GSMSNIFFER_MAX_DURATION_SECONDS` | `300` |
-| `GSMSNIFFER_HEALTHCHECK_URL` | `http://127.0.0.1:8080/healthz` |
+| `GSMSNIFFER_HEALTHCHECK_URL` | Unset: check both listeners; nonempty: override probe URL / 默认检查双端口，非空时覆盖探测URL |
 
-Compose-only variables: `GSMSNIFFER_IMAGE`, `GSMSNIFFER_BIND`, `GSMSNIFFER_PORT`, `GSMSNIFFER_TOKEN_PATH`. Use an absolute host token path. `.env.example` contains placeholders only; pass `--env-file .env` explicitly if copying it.
+Compose-only variables: `GSMSNIFFER_IMAGE`, `GSMSNIFFER_BIND`, `GSMSNIFFER_PORT` (host UI, default `18083`), `GSMSNIFFER_API_PORT` (host backend, default `8083`), `GSMSNIFFER_TOKEN_PATH`. 宿主前后端端口分别配置，容器监听地址用上表两个ADDR；两端口须不同。 Use an absolute host token path. `.env.example` contains placeholders only; pass `--env-file .env` explicitly if copying it.
 
 ## 2. Secrets / 密钥
 
@@ -37,15 +37,17 @@ docker compose -f deploy/docker/compose.yml ps
 docker compose -f deploy/docker/compose.yml logs --tail=100
 ```
 
-Do not paste logs publicly before checking for sensitive data. `gsmsniffer healthcheck` checks HTTP liveness only; `/readyz` and authenticated capabilities complement it. None proves a connected SDR is usable.
+Do not paste logs publicly before checking for sensitive data. `gsmsniffer healthcheck` probes both frontend and backend by default; set `GSMSNIFFER_HEALTHCHECK_URL` only for an intentional probe override. 双端口任一健康检查失败即视为失败；URL覆盖改变探测目标，不改变监听端口。 It checks HTTP liveness only; `/readyz` and authenticated capabilities complement it. None proves a connected SDR is usable.
 
-To opt into the separate API listener:
+The API listener is enabled by the base Compose file. `compose.api.yml` remains as an empty compatibility overlay for existing command lines; adding it no longer enables an otherwise-disabled port.
+
+基础Compose已启用独立API；以下旧命令仍可用，`compose.api.yml`仅保留空兼容覆盖，不改变监听状态：
 
 ```bash
 docker compose -f deploy/docker/compose.yml -f deploy/docker/compose.api.yml up -d --build
 ```
 
-Both listeners require the same token; host API port 8083 stays loopback-only. Remote users should tunnel the management port using `ssh -L 8080:127.0.0.1:8080 USER@HOST`; verify the SSH host key independently. No private host or SSH password is stored in this project.
+Both listeners require the same token; host UI 18083 and API 8083 stay loopback-only by default. The backend serves API/health only and returns 404 for `/`. 两端共用Token；后端根路径不提供前端页面。 Remote users should tunnel the management port using `ssh -L 18083:127.0.0.1:18083 USER@HOST`; verify the SSH host key independently. No private host or SSH password is stored in this project.
 
 ## 4. Shielded hardware integration / 屏蔽实验集成
 

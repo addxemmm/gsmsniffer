@@ -1,8 +1,8 @@
 # REST API v1
 
-Base URL: `http://127.0.0.1:8080/api/v1`. All API routes require `Authorization: Bearer TOKEN`, including the OpenAPI endpoint. Health routes `/healthz` and `/readyz` are unauthenticated and expose only liveness/readiness.
+Direct backend base URL: `http://127.0.0.1:8083/api/v1`. The frontend retains the same-origin API at `http://127.0.0.1:18083/api/v1`; it does not make cross-origin browser requests to port 8083. Both listeners are enabled by default. The backend is API-only: `/` returns 404, not the Web console. All API routes require `Authorization: Bearer TOKEN`, including the OpenAPI endpoint. Health routes `/healthz` and `/readyz` are unauthenticated and expose only liveness/readiness.
 
-所有 API 均须 Bearer 鉴权；Token 不应放入 URL、日志或截图。独立监听器仅在设置 `GSMSNIFFER_API_ADDR` 后启用。
+所有 API 均须 Bearer 鉴权；Token 不应放入 URL、日志或截图。后端监听器默认 `GSMSNIFFER_API_ADDR=:8083`，只提供API；前端默认 `GSMSNIFFER_ADDR=:18083` 并保留同源API，避免跨域。两个监听器均默认启用，使用相同Token。
 
 Standard JSON envelope (OpenAPI alone returns its native schema representation):
 
@@ -34,7 +34,7 @@ Example request for the default **demo** service (synthetic output only):
 
 ```bash
 # Set TOKEN locally; do not save a real value in this document.
-curl --fail-with-body http://127.0.0.1:8080/api/v1/jobs \
+curl --fail-with-body http://127.0.0.1:8083/api/v1/jobs \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"kind":"scan","band":"GSM900","duration_seconds":60,"shielded_ack":true}'
 ```
@@ -45,4 +45,4 @@ The acknowledgment is an explicit operator assertion; it is not a measurement of
 
 Expect 4xx for missing/invalid authentication, malformed JSON, invalid fields, missing job or conflicting state. Dependency failures should be treated as actionable errors, not empty successful captures. Handle non-JSON proxy errors, bounded request timeouts and retries carefully; do not blindly retry POST jobs because duplicate operations may result. Always query state before retrying.
 
-Import `postman/gsmsniffer.postman_collection.json`; configure `baseUrl` and `token` locally. Collection defaults to read-only probes and an unauthorized-access test. Mutating demo examples are skipped unless allowMutations=true and the prior status request confirms demo mode. No real token is exported.
+Import `postman/gsmsniffer.postman_collection.json`; configure `baseUrl` (default `http://127.0.0.1:8083`, without `/api/v1`) and `token` locally. Postman默认直连后端8083，baseUrl不附加路径前缀。 Collection defaults to read-only probes and an unauthorized-access test. Mutating demo examples are skipped unless allowMutations=true and the prior status request confirms demo mode. No real token is exported.

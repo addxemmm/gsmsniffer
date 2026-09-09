@@ -43,12 +43,12 @@ jobs:
           docker run -d --name gsmsniffer-ci --read-only --cap-drop ALL --security-opt no-new-privileges \
             --tmpfs /tmp:rw,noexec,nosuid,size=64m \
             --tmpfs /var/lib/gsmsniffer:rw,uid=10001,gid=10001,mode=0700 \
-            -p 127.0.0.1:18080:8080 \
+            -p 127.0.0.1:18083:18083 -p 127.0.0.1:8083:8083 \
             --mount "type=bind,src=$RUNNER_TEMP/gsmsniffer-token,dst=/run/secrets/api_token,readonly" \
             -e GSMSNIFFER_TOKEN_FILE=/run/secrets/api_token gsmsniffer:ci
           for attempt in $(seq 1 30); do
-            if curl --fail --silent http://127.0.0.1:18080/healthz >/dev/null; then break; fi
+            if curl --fail --silent http://127.0.0.1:18083/healthz >/dev/null; then break; fi
             sleep 1
           done
-          export TOKEN BASE=http://127.0.0.1:18080
+          export TOKEN BASE=http://127.0.0.1:18083 API_BASE=http://127.0.0.1:8083
           bash scripts/smoke.sh

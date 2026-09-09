@@ -20,3 +20,9 @@ This is a breaking modernization release, not an in-place patch of the historica
 7. Rollback by stopping the new container and restoring the private legacy deployment, only within the same isolated test conditions. Do not start both against the same SDR device.
 
 New license declarations do not retroactively relicense upstream code. Review NOTICE and third-party obligations before publication. 新的管理代码与原工作目录许可边界分离。
+
+## Current-source port revision / 当前源码端口调整
+
+Current defaults enable UI/same-origin API `:18083` and an API-only backend `:8083`. Configure host mappings through `GSMSNIFFER_PORT` (18083) and `GSMSNIFFER_API_PORT` (8083), update tunnels/client URLs, and rerun dual-listener smoke checks. `compose.api.yml` is a no-op compatibility overlay, not an opt-in switch. Token handling is unchanged.
+
+当前源码默认同时启用前端18083和后端8083；前端保留同源API，后端根路径返回404。迁移时更新宿主映射、SSH隧道、Postman与探活配置，Token沿用。版本仍为2.0.0，不改写历史发布记录或原镜像digest；新源码与历史镜像应按revision/digest区分。

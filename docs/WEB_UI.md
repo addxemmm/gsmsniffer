@@ -1,8 +1,8 @@
 # Web 控制台 / Web console
 
-The embedded console is served at `/` on port 8080. It shares its origin with `/api/v1`, avoiding a separate web-server or cross-origin token configuration. Select Chinese or English, enter your bearer token, and inspect status and capabilities first.
+The embedded console is served at `/` on port 18083. The independent API-only backend defaults to port 8083 and does not serve the console (`/` returns 404). It shares its origin with `/api/v1`, avoiding a separate web-server or cross-origin token configuration. Select Chinese or English, enter your bearer token, and inspect status and capabilities first.
 
-控制台使用同源接口。先确认服务模式、依赖状态和 Token，再操作任务。初次验收只运行 demo；演示频点和脱敏身份不是真实测量。
+控制台默认18083，使用同源 `/api/v1` 接口；独立后端默认8083且只提供API，两个监听器默认启用。先确认服务模式、依赖状态和 Token，再操作任务。初次验收只运行 demo；演示频点和脱敏身份不是真实测量。
 
 Recommended operator sequence:
 
@@ -13,6 +13,6 @@ Recommended operator sequence:
 5. Inspect redacted observations, then clear them when no longer needed. Avoid sharing screenshots containing tokens or unredacted data.
 6. End the session and remove token access from a shared browser. Do not paste tokens into issue reports.
 
-若界面报错，先检查 HTTP 状态和 request_id、Token 文件、容器日志、`/healthz`，再检查能力接口。直接 API listener默认关闭，界面无需8083。私有远程部署通过 SSH 隧道访问，不将 Token 暴露给普通 HTTP 公网连接。
+若界面报错，先检查 HTTP 状态和 request_id、Token 文件、容器日志、`/healthz`，再检查能力接口。独立API监听器默认8083且已启用；界面仍走18083同源API，不依赖浏览器跨域访问8083。私有远程部署通过 SSH 隧道访问，不将 Token 暴露给普通 HTTP 公网连接。
 
 A responsive layout and bilingual labels are UI features, not a certification of accessibility or RF operation; record browser and viewport in manual acceptance reports.

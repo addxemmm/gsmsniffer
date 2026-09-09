@@ -7,9 +7,11 @@ services:
       dockerfile: deploy/docker/Dockerfile
       target: runtime
     ports:
-      - "${GSMSNIFFER_BIND:-127.0.0.1}:${GSMSNIFFER_PORT:-8080}:8080"
+      - "${GSMSNIFFER_BIND:-127.0.0.1}:${GSMSNIFFER_PORT:-18083}:18083"
+      - "${GSMSNIFFER_API_BIND:-127.0.0.1}:${GSMSNIFFER_API_PORT:-8083}:8083"
     environment:
-      GSMSNIFFER_ADDR: ":8080"
+      GSMSNIFFER_ADDR: ":18083"
+      GSMSNIFFER_API_ADDR: ":8083"
       GSMSNIFFER_MODE: "${GSMSNIFFER_MODE:-demo}"
       GSMSNIFFER_TOKEN_FILE: /run/secrets/api_token
       GSMSNIFFER_DATA_DIR: /var/lib/gsmsniffer

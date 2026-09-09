@@ -2,7 +2,7 @@
 
 ```text
 Browser / API client
-       | HTTP + Bearer, same-origin :8080
+       | UI + same-origin API :18083 / direct API-only :8083
        v
 Go binary: embedded UI -> validation/auth -> job manager -> observations
                                       | opt-in shielded adapter
@@ -20,7 +20,7 @@ The management backend is Go 1.26 using the standard library; the frontend is em
 - `shielded` must be selected explicitly. Jobs require acknowledgment and bounded duration; startup never starts a job.
 - Token file takes precedence over the environment token. Only `/healthz` and `/readyz` bypass API authentication.
 - Identities are permanently masked; SMS is event-only and plaintext message bodies are not retained. Never use production subscriber data for screenshots, fixtures or issues.
-- Optional `GSMSNIFFER_API_ADDR=:8083` exposes the same authenticated API; it is off by default.
+- Both listeners default on: `GSMSNIFFER_ADDR=:18083` serves the embedded UI and same-origin API; `GSMSNIFFER_API_ADDR=:8083` is API-only (`/` returns 404). Both use the same authentication and manager. 双监听默认启用，共用鉴权和任务管理；前端保持同源调用，不跨域直连8083。
 - Container has a writable data volume and temporary filesystem; root filesystem is read-only. No default host networking, privileged mode or USB forwarding.
 - Clean publication starts from the allowlist, not the legacy workspace or existing Git history.
 

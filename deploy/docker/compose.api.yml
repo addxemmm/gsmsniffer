@@ -1,7 +1,3 @@
-# Optional direct API listener. Same bearer authentication; loopback only.
-services:
-  gsmsniffer:
-    environment:
-      GSMSNIFFER_API_ADDR: ":8083"
-    ports:
-      - "127.0.0.1:8083:8083"
+# Backward-compatible no-op overlay: base Compose now enables API 8083.
+# Keeping this file avoids breaking older deployment command lines.
+services: {}

@@ -17,7 +17,9 @@ Required behavior coverage: missing/invalid token; malformed request and unknown
 
 ## Container smoke / 容器验收
 
-Use a disposable random token, runtime target and no RF devices. Confirm healthy liveness, successful authenticated status, unauthorized status rejection, embedded UI availability, non-root UID, read-only root and no privileged/host networking. Use `bash scripts/smoke.sh` with local `BASE` and `TOKEN` environment values. The script is read-only and creates no job.
+Use a disposable random token, runtime target and no RF devices. Confirm healthy liveness, successful authenticated status, unauthorized status rejection, embedded UI availability, non-root UID, read-only root and no privileged/host networking. Use `bash scripts/smoke.sh` with local `TOKEN`, `BASE` (default `http://127.0.0.1:18083`) and `API_BASE` (default `http://127.0.0.1:8083`) environment values. CI may override both URLs. The script probes both health endpoints and checks the API-only backend: `/` returns 404, `/api/v1/status` without a token returns 401 and with a valid token returns 200. It also checks frontend HTML and same-origin authenticated routes. The script is read-only and creates no job.
+
+冒烟测试默认同时检查前端18083与后端8083，验证后端不提供HTML、两端鉴权及健康状态。CI自定义映射时须同时覆盖BASE和API_BASE；没有启动任何RF任务。
 
 Import Postman collection, set local variables, run all read-only requests. Tokens in Postman must be local/current values, not synced/shared initial values. The collection skips mutating requests by default. Explicit allowMutations=true permits the guarded demo-only lifecycle examples after a successful status request.
 

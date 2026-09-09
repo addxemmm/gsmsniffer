@@ -7,7 +7,20 @@
   },
   "servers": [
     {
-      "url": "/"
+      "url": "/",
+      "description": "Current origin: Web 18083 with same-origin API, or API-only 8083 by default."
+    },
+    {
+      "url": "http://{host}:{port}",
+      "description": "Direct backend API via localhost/SSH tunnel. Use HTTPS for nonlocal deployments.",
+      "variables": {
+        "host": {
+          "default": "127.0.0.1"
+        },
+        "port": {
+          "default": "8083"
+        }
+      }
     }
   ],
   "security": [

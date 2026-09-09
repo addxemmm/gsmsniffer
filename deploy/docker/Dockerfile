@@ -25,9 +25,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin gsmsniffer \
     && mkdir -p /var/lib/gsmsniffer && chown 10001:10001 /var/lib/gsmsniffer
 COPY --from=build /out/gsmsniffer /usr/local/bin/gsmsniffer
-ENV GSMSNIFFER_ADDR=:8080 GSMSNIFFER_MODE=demo \
+ENV GSMSNIFFER_ADDR=:18083 GSMSNIFFER_API_ADDR=:8083 GSMSNIFFER_MODE=demo \
     GSMSNIFFER_DATA_DIR=/var/lib/gsmsniffer GSMSNIFFER_MAX_DURATION_SECONDS=300
-EXPOSE 8080
+EXPOSE 18083 8083
 USER 10001:10001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD ["/usr/local/bin/gsmsniffer", "healthcheck"]

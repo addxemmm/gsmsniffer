@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "GSM-SNIFFER v2 read-only acceptance",
-    "description": "Owned test SIMs/terminals only inside RF-shielded rooms/enclosures. Read-only by default. Set allowMutations=true explicitly for demo-only job/cancel/clear examples; run status first. No shared token values.",
+    "description": "Owned test SIMs/terminals only inside RF-shielded rooms/enclosures. Read-only by default. Set allowMutations=true explicitly for demo-only job/cancel/clear examples; run status first. No shared token values. Default baseUrl is the API-only backend on port 8083; the Web console remains on 18083 with same-origin API. 默认直连后端8083，前端18083保留同源API。",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -17,7 +17,7 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://127.0.0.1:8080"
+      "value": "http://127.0.0.1:8083"
     },
     {
       "key": "token",
