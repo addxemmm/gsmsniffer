@@ -1,7 +1,7 @@
 name: gsmsniffer
 services:
   gsmsniffer:
-    image: ${GSMSNIFFER_IMAGE:-gsmsniffer:2.0.0}
+    image: ${GSMSNIFFER_IMAGE:-addxemmm/gsmsniffer:2.1}
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile

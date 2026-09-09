@@ -4,9 +4,6 @@
 # It enables dependencies and access, but does not create or start a job.
 services:
   gsmsniffer:
-    image: ${GSMSNIFFER_SHIELDED_IMAGE:-gsmsniffer:2.0.0-shielded}
-    build:
-      target: shielded
     user: "0:0"
     environment:
       GSMSNIFFER_MODE: shielded

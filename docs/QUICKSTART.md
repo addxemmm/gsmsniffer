@@ -7,8 +7,16 @@
 5. Open `http://127.0.0.1:18083` and enter the token; the API-only backend is `http://127.0.0.1:8083/api/v1`. 前端18083与后端8083默认同时启用，前端仍调用同源API。 Query capabilities/status before creating a demo job. Status must clearly indicate `demo`. 模拟数据不可作为现场测量结果。
 6. Finish with `docker compose -f deploy/docker/compose.yml down`. Do not add `-v` unless data deletion is intended. 停止服务默认保留数据卷。
 
-For a prebuilt image, confirm a unique revision tag/digest containing the new dual-port defaults, then set `GSMSNIFFER_IMAGE=addxemmm/gsmsniffer:IMAGE_TAG` (replace `IMAGE_TAG` with that verified tag), run `docker compose ... pull`, and `docker compose ... up -d --no-build`. The original `2.0.0` release digest remains historical and does not automatically acquire current source defaults.
+Use the single prebuilt image / 使用唯一预构建版本：
 
-预构建镜像须选择已确认包含新双端口配置的唯一revision tag/digest；旧2.0.0发布记录和digest不覆盖。源码版本暂保持2.0.0，新的镜像是否已发布以实际仓库结果为准。
+```bash
+export GSMSNIFFER_IMAGE=addxemmm/gsmsniffer:2.1
+docker compose -f deploy/docker/compose.yml pull
+docker compose -f deploy/docker/compose.yml up -d --no-build
+```
+
+The image includes gr-gsm/tshark but defaults to demo without USB mapping. Compose uses `restart: "no"`; starting it here does not enable boot startup. One tag serves both modes; hardware integration requires the separately reviewed override in [DEPLOY](DEPLOY.md).
+
+同一2.1镜像包含完整依赖，默认仅demo；不需要额外镜像标签。服务不开机自启，镜像存在不代表真实射频验收完成。
 
 For local development use Go 1.26, `go test ./...`, and `go run ./cmd/server`, with a readable token file and both `GSMSNIFFER_ADDR=127.0.0.1:18083` and `GSMSNIFFER_API_ADDR=127.0.0.1:8083` for loopback-only local listeners. 本地开发建议两个ADDR都指定loopback；应用默认分别为 `:18083` 和 `:8083`。 Windows PowerShell uses `$env:GSMSNIFFER_TOKEN_FILE='C:\absolute\path\api_token'`.

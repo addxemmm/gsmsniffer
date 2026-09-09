@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "GSM Sniffer Shielded Laboratory API",
-    "version": "2.0.0",
+    "version": "2.1",
     "description": "Only for owned test SIMs and terminals inside an RF-shielded room/enclosure. Default demo mode emits synthetic data. No task starts automatically. Identifiers and SMS contents are permanently redacted. Service health does not certify RF readiness."
   },
   "servers": [

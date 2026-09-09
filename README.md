@@ -1,6 +1,6 @@
-# GSM-SNIFFER 2.0.0 · Go laboratory console
+# GSM-SNIFFER 2.1 · Go laboratory console
 
-[GitHub Release](https://github.com/addxemmm/gsmsniffer/releases/tag/v2.0.0) · [Docker Hub](https://hub.docker.com/r/addxemmm/gsmsniffer) · [验收记录 / Acceptance](docs/releases/2.0.0.md)
+[GitHub Releases](https://github.com/addxemmm/gsmsniffer/releases) · [Docker Hub](https://hub.docker.com/r/addxemmm/gsmsniffer) · [2.1 说明 / Release notes](docs/releases/2.1.md)
 
 > **使用范围：仅限自有测试 SIM、自有终端，在屏蔽室或屏蔽箱内进行隔离实验。不得接入或采集公众移动网络及第三方通信。射频任务前应确认屏蔽有效、测试设备归属及现场操作条件。**
 >
@@ -16,7 +16,8 @@ A Go standard-library management backend with an embedded bilingual console and 
 - 强制 Bearer Token；支持优先读取 token 文件。Mandatory bearer authentication, file-based secrets preferred.
 - `/api/v1` 标准包络、OpenAPI、Postman 断言。Versioned envelopes, OpenAPI and Postman checks.
 - 有界扫描/采集任务、取消与状态查询；身份永久脱敏，SMS只保留事件、不保留明文正文。Bounded jobs and cancellation; identities are permanently masked and SMS is event-only, without plaintext bodies.
-- 多阶段 Docker：默认非 root、只读根文件系统、无特权及 USB 映射；RF 依赖单独 target。Hardened default image and opt-in RF dependencies.
+- 单一 Docker 镜像 `addxemmm/gsmsniffer:2.1` 内含 gr-gsm/tshark；默认非 root、只读根文件系统、无特权及 USB 映射。One complete image; RF device access and shielded mode remain opt-in.
+- 前端18083、后端8083；Compose 重启策略为 `no`，不开机自启。No automatic service restart or startup jobs.
 - 新源码白名单导出；旧日志、捕获、图片/PDF、历史仓库不进入发布包。Allowlisted publication excludes legacy data and history.
 
 ## 快速开始 / Quick start
@@ -56,10 +57,8 @@ go run ./cmd/server
 
 ## 发布与许可 / Publication and licensing
 
-当前源码默认前端18083、后端8083；版本仍为 `2.0.0`，端口调整不改写[历史发布验收](docs/releases/2.0.0.md)或原镜像digest。使用新源码构建，或先确认包含本次调整的唯一revision镜像tag/digest，再按这些端口部署。
+当前版本统一为 **`2.1`**，Docker Hub 仅使用 **`addxemmm/gsmsniffer:2.1`**。同一完整依赖镜像用于 demo 和显式 shielded 模式，不再发布独立依赖标签或提交哈希标签。默认前端18083、后端8083，`restart: "no"`。拉取和部署方式见 [快速开始](docs/QUICKSTART.md)。
 
-Current source defaults to UI 18083 and backend 8083 while VERSION remains `2.0.0`. The historical release record and original image digests remain unchanged; build this source or select a confirmed unique revision image tag/digest before using these new defaults.
-
-Version `2.0.0` introduces breaking changes from the legacy tool. Repository creation, image publication and actual deployment are separate operations: workflow files alone do not prove that an image has been pushed. Docker Hub examples use `addxemmm/gsmsniffer:2.0.0`; The target namespace is confirmed; verify the tag exists before pulling.
+Current release uses one Docker Hub tag, **`addxemmm/gsmsniffer:2.1`**, including gr-gsm/tshark. Demo remains the default, without hardware access or automatic jobs. Exact source revisions and image digests are recorded as release evidence rather than additional image tags. The [2.0.0 acceptance record](docs/releases/2.0.0.md) is historical, not current deployment guidance.
 
 `2.0.0` 是破坏性改造版本，不保留旧工具的明文IMSI/SMS展示或导出兼容。No raw IMSI/SMS display or export compatibility is retained. 发布流程不自动登录实验服务器，不自动启动射频任务。旧工作目录与 Git 历史不得直接推入新公开项目。新增部分和外部运行组件的许可边界见 [NOTICE](NOTICE.md) 与 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)；不将未核实许可的旧代码重新声明为 MIT。

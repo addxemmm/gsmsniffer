@@ -10,7 +10,7 @@ Go binary: embedded UI -> validation/auth -> job manager -> observations
                               gr-gsm / tshark processes
 ```
 
-The management backend is Go 1.26 using the standard library; the frontend is embedded into the binary. No Node or Python web server is needed. RF executables remain independent upstream components: GNU Radio/gr-gsm can depend on Python. “Backend migrated to Go” does not mean “all optional images contain no Python”.
+The management backend is Go 1.26 using the standard library; the frontend is embedded into the binary. No Node or Python web server is needed. RF executables remain independent upstream components: GNU Radio/gr-gsm can depend on Python. “Backend migrated to Go” does not mean “the complete image contains no Python”.
 
 管理后端和 Web 服务为 Go；RF 工具链与管理面分离。外部程序的可用性与真实设备状态分别验收，安装成功不代表采集成功。
 

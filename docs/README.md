@@ -10,5 +10,6 @@
 | [MIGRATION](MIGRATION.md) | Breaking changes and clean export / 迁移 |
 | [RELEASING](RELEASING.md) | GitHub/Docker Hub release checks / 发布 |
 | [TESTING](TESTING.md) | Automated and physical acceptance / 验收 |
+| [2.1 notes](releases/2.1.md) | Single image policy and current defaults / 单镜像与当前默认值 |
 
 All RF use is restricted to owned test devices/SIMs in shielded rooms or enclosures. Examples are not deployment evidence. 所有 RF 实验仅限自有设备/SIM 和屏蔽环境，命令示例不等同于实测记录。

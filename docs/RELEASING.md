@@ -1,67 +1,54 @@
 # GitHub / Docker Hub 发布
 
+## Current policy / 当前版本策略
+
+Publish only **`addxemmm/gsmsniffer:2.1`**. The complete image includes gr-gsm/tshark and defaults to demo. Do not publish separate dependency, commit-qualified or `latest` tags. Source revision labels, provenance and the image digest provide traceability without additional tags.
+
+只保留一个2.1镜像标签；demo与显式shielded使用同一镜像。模式、硬件权限与镜像版本是独立配置。端口为前端18083、后端8083，重启策略保持 `no`。
+
 ## Clean public source / 干净源码
 
-Do not push the legacy repository/history. Deleting files in a new commit is insufficient. Export reviewed new files into an empty directory:
+The public repository already exists. Use its clean history for normal updates; do not reinitialize it or push the legacy history. For an independent reviewed source export:
 
 ```bash
 python scripts/release_export.py --output release-export
-cd release-export
-git init -b main
-git add .
-git diff --cached --stat
-# Review every staged file and LICENSE/provenance before committing.
-git commit -m 'Modernize GSM-SNIFFER 2.0.0'
-# After confirming account/repository ownership:
-# For a new namespace, create the public repository once:
-# gh repo create OWNER/gsmsniffer --public --source=. --remote=origin --push
-# The confirmed target already has an empty repository; attach it instead:
-git remote add origin https://github.com/addxemmm/gsmsniffer.git
-git push -u origin main
 ```
 
-Export is deny-by-default and rejects symlinks, binary captures, secrets/private-address patterns and forbidden paths; it creates a SHA-256 manifest. A scanner is not proof of absence: manually review the export, including synthetic test fixtures, frontend assets, comments and notices. Never include old `.git`, workspace, logs, images/PDFs or screenshots. The scanner does not read excluded private legacy files.
+Export is deny-by-default and rejects symlinks, binary captures, secrets/private-address patterns and forbidden paths; it creates a SHA-256 manifest. Manually review every exported file and its license/provenance. Never include old `.git`, workspace, logs, captures, images/PDFs or screenshots. The scanner does not read excluded private legacy files.
 
-导出不是自动许可审查。先确认新增代码权利、NOTICE及外部包义务；未经核实的上游代码不复制、不重新标MIT。
+导出不是自动许可审查。先确认新增代码权利、NOTICE及外部包义务；未经核实的上游代码不复制、不重新标MIT。日常更新应使用已有的干净公开仓库。
 
 ## CI and publication / 自动化
 
 Registry authentication and build/push actions follow the [official Docker workflow](https://docs.docker.com/build/ci/github-actions/push-multi-registries/).
 
-- `ci.yml`: vet, tests, race tests, build, allowlist/tracked-file validation and a non-publishing runtime Docker build.
-- `release.yml`: manual `workflow_dispatch` or a `v*` tag. VERSION must match the selected tag. Validation/build and RF-free demo smoke are a separate job before publishing.
-- Repository variable: `DOCKERHUB_USERNAME` (confirmed account or organization).
-- Repository secret: `DOCKERHUB_TOKEN` (scoped Docker Hub access token). Do not commit its value or use an account password.
-- Manual runs default `publish=false` and `revision_tag=false`. Explicit `publish=true` or a matching version tag enables pushing only after validation. For the current port-default revision, set both `publish=true` and `revision_tag=true`; do not use the existing version tags.
-- Version-release tags remain `addxemmm/gsmsniffer:2.0.0` and `:2.0.0-shielded`; their historical digests must not be overwritten by the port-default revision. With `revision_tag=true`, tags are `VERSION-sha-SHA12` and `VERSION-sha-SHA12-shielded`, where `SHA12` is the first 12 characters of the workflow source commit (`GITHUB_SHA`). No implicit `latest` tag. 端口调整使用唯一revision标签，不把原2.0.0标签默认为新端口。
-- Use the protected `dockerhub` environment for publisher approval if desired. Restrict who can create release tags and edit workflows.
-- Publication never SSHs into servers, deploys containers or starts RF jobs.
+- `ci.yml`: vet, tests, race tests, build, allowlist/tracked-file validation and a non-publishing full runtime image build.
+- `release.yml`: manual dispatch only; validate VERSION, test/build and run RF-free demo smoke before publishing the single `2.1` tag. Creating a GitHub release/tag does not implicitly publish another image.
+- Configure `DOCKERHUB_USERNAME` and `DOCKERHUB_IMAGE` for the confirmed namespace and repository. Keep `DOCKERHUB_TOKEN` only in GitHub secrets with the required repository scope; never commit credentials or use an account password.
+- Manual validation is non-publishing by default. Set `publish=true` explicitly when publishing. The old `revision_tag` option is retired.
+- Use the `dockerhub` environment and restrict workflow edits and release access. Publication does not SSH into servers, deploy containers or start RF jobs.
 
-CI and workflow configuration are not evidence that a public repo/image exists. Confirm the actual GitHub URL, Docker Hub tags and image digest after pushing. 首次目标账号未确认时保留占位符，禁止把配置文件写成“已发布”。
+```bash
+gh workflow run release.yml --ref main -f publish=true
+```
+
+Triggering the workflow does not itself confirm publication. Verify its successful result, source commit and actual Docker Hub digest. 触发成功不等于镜像发布成功；以实际构建、推送和拉取结果为准。
 
 ## Release checklist / 发布清单
 
-1. VERSION, changelog, API docs, Postman and migration notes match.
-2. Clean export reviewed; new repository history checked; no private data or credentials.
-3. Tests and container smoke pass; record skipped RF acceptance honestly.
-4. Pin/save source commit and final image digest. Review SBOM, vulnerability results and installed package copyright/source obligations before distribution.
-5. Configure Docker Hub namespace/secret; execute workflow with explicit publishing intent.
-6. Inspect both registry tags/digests. Pull and smoke-test the demo image without devices.
-7. Publish sanitized release notes with exact checks and unresolved limitations. GitHub Release creation is a separate owner action, e.g. `gh release create v2.0.0 --title '2.0.0' --notes-file RELEASE_NOTES.md` after preparing reviewed notes.
-8. Deploy only after a separate operator decision. Rollback uses the recorded prior digest, not mutable latest.
+1. VERSION, changelog, API docs, Postman, image labels and current examples agree on `2.1`.
+2. Review the clean export and public diff; exclude private data and credentials.
+3. Pass tests, full image build and demo-only smoke checks on both ports; do not imply RF acceptance.
+4. Record source commit and final image digest. Review SBOM, vulnerability results and installed package copyright/source obligations before distribution.
+5. Publish the single `2.1` tag and verify it can be pulled. Use no devices for the initial container check.
+6. Separately deploy with the existing token/data volume, preserve loopback bindings and confirm `RestartPolicy.Name=no`, both health endpoints and no active startup jobs.
+7. Only after successful deployment, inventory old tags and remove the explicitly approved obsolete tags. Preserve `2.1`, verify its digest before cleanup and check the final tag list. Delete by tag, not by a shared manifest digest. Keep rollback artifacts locally before cleanup; do not remove other projects' images or data volumes.
+8. Publish sanitized release evidence. Retain the [2.0.0 historical record](releases/2.0.0.md), without presenting old tags or ports as current deployment guidance.
 
-## Port-default revision without changing VERSION / 保持版本的端口调整
+当前发布与服务器验收完成后，再清理历史标签。每次删除都限定本仓库与已核对的旧标签；`2.1`保持不动。历史文档中的旧digest是审计记录，不保证对应远程标签持续可拉取。
 
-VERSION remains `2.0.0` for the current UI 18083 / backend 8083 source change. Preserve the historical `v2.0.0` release record and its original image digests. Do not republish the existing version tags to make them silently point at the revised defaults. If publishing this revision, use a new, unique revision-qualified tag and record the exact source commit and image digest; confirm workflow tag behavior before enabling push.
+## Historical tag cleanup / 历史标签清理
 
-本次前端18083、后端8083调整暂不升版，不覆盖旧Release和digest。后续发布使用唯一revision镜像tag并记录源码提交与镜像摘要；未经核实不要让原有版本tag指向新构建。`docs/releases/2.0.0.md`保留当时真实端口，不能作为当前源码默认端口说明。
+`hub-cleanup.yml` is a separate manual workflow. Supply the verified `expected_digest` for `2.1`; `apply` defaults to `false` for inspection. After server acceptance, explicitly set `apply=true` to remove only the four known obsolete 2.0.0-series tags. The workflow checks the retained digest; it is not a wildcard repository purge. Its Docker Hub credential needs tag-deletion permission.
 
-Dispatch the current revision explicitly / 显式发布本次修订：
-
-```bash
-gh workflow run release.yml --ref main -f publish=true -f revision_tag=true
-```
-
-After success, inspect the workflow source commit and registry digests. For VERSION `2.0.0`, use `addxemmm/gsmsniffer:2.0.0-sha-SHA12` (demo) or `:2.0.0-sha-SHA12-shielded`; replace `SHA12` with the verified 12-character commit prefix, not a guessed identifier. Triggering a workflow does not itself confirm publication.
-
-运行成功后核对实际提交前12位与镜像digest，再部署对应revision标签；命令提交成功不等同于镜像已经发布。原 `2.0.0` / `2.0.0-shielded` 与旧验收记录继续保留。
+历史清理与发布分开执行，默认只检查。先核对2.1摘要与服务器验收，再明确启用删除；新版本及其他项目不在删除范围内。

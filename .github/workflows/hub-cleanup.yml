@@ -1,0 +1,36 @@
+name: Consolidate Docker Hub tags
+on:
+  workflow_dispatch:
+    inputs:
+      expected_digest:
+        description: 'Digest of 2.1 already deployed and verified on the server'
+        required: true
+        type: string
+      apply:
+        description: 'Delete the four legacy 2.0.0 tags; preserve 2.1'
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: dockerhub-gsmsniffer
+  cancel-in-progress: false
+jobs:
+  consolidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: dockerhub
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate retained digest and consolidate only this repository
+        env:
+          HUB_USER: ${{ vars.DOCKERHUB_USERNAME }}
+          HUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          EXPECTED_DIGEST: ${{ inputs.expected_digest }}
+          APPLY: ${{ inputs.apply }}
+        run: |
+          args=(--expected-digest "$EXPECTED_DIGEST")
+          if [ "$APPLY" = true ]; then args+=(--apply); fi
+          python3 scripts/hub_tags.py "${args[@]}"

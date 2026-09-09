@@ -19,7 +19,7 @@ import (
 	"gsmsniffer/internal/webui"
 )
 
-var version = "2.0.0"
+var version = "2.1"
 var revision = "development"
 
 const defaultWebAddress = ":18083"

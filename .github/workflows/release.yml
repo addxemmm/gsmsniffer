@@ -1,23 +1,16 @@
 name: Container release
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
     inputs:
       publish:
-        description: 'Push versioned images to the confirmed Docker Hub namespace'
-        required: true
-        type: boolean
-        default: false
-      revision_tag:
-        description: 'Publish VERSION-sha-COMMIT without replacing an existing version tag'
+        description: 'Push the single 2.1 image to the confirmed Docker Hub namespace'
         required: true
         type: boolean
         default: false
 permissions:
   contents: read
 concurrency:
-  group: release-${{ github.ref }}
+  group: dockerhub-gsmsniffer
   cancel-in-progress: false
 jobs:
   validate:
@@ -39,14 +32,12 @@ jobs:
         env:
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
-          REVISION_TAG: ${{ inputs.revision_tag }}
         run: |
           version=$(cat VERSION)
-          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$version" = "2.1"
           if [ "$REF_TYPE" = tag ]; then test "$REF_NAME" = "v$version"; fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           image_tag="$version"
-          if [ "$REVISION_TAG" = true ]; then image_tag="$version-sha-${GITHUB_SHA:0:12}"; fi
           echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
       - name: Test and scan before publication
         run: |
@@ -54,12 +45,12 @@ jobs:
           go test ./...
           go test -race ./...
           go build ./cmd/server
+          python3 scripts/test_hub_tags.py
           python3 scripts/test_release_export.py
           python3 scripts/release_export.py --check-only --check-tracked
-      - name: Build both targets without registry access
+      - name: Build the complete image without registry access
         run: |
           docker build --target runtime --build-arg VERSION="$(cat VERSION)" --build-arg REVISION="$GITHUB_SHA" -f deploy/docker/Dockerfile -t gsmsniffer:verify .
-          docker build --target shielded --build-arg VERSION="$(cat VERSION)" --build-arg REVISION="$GITHUB_SHA" -f deploy/docker/Dockerfile -t gsmsniffer:verify-shielded .
       - name: Demo container read-only smoke (no RF)
         shell: bash
         run: |
@@ -83,7 +74,7 @@ jobs:
           bash scripts/smoke.sh
   publish:
     needs: validate
-    if: github.event_name == 'push' || inputs.publish == true
+    if: inputs.publish == true
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: dockerhub
@@ -104,7 +95,7 @@ jobs:
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Push versioned demo image (never latest)
+      - name: Push only 2.1 (no latest, SHA, or mode aliases)
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -112,19 +103,6 @@ jobs:
           target: runtime
           push: true
           tags: ${{ vars.DOCKERHUB_USERNAME }}/gsmsniffer:${{ needs.validate.outputs.image_tag }}
-          build-args: |
-            VERSION=${{ needs.validate.outputs.version }}
-            REVISION=${{ github.sha }}
-          provenance: mode=max
-          sbom: true
-      - name: Push explicit shielded dependency image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: deploy/docker/Dockerfile
-          target: shielded
-          push: true
-          tags: ${{ vars.DOCKERHUB_USERNAME }}/gsmsniffer:${{ needs.validate.outputs.image_tag }}-shielded
           build-args: |
             VERSION=${{ needs.validate.outputs.version }}
             REVISION=${{ github.sha }}

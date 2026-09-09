@@ -5,14 +5,14 @@ COPY go.mod ./
 COPY cmd/ ./cmd/
 COPY internal/ ./internal/
 COPY VERSION ./VERSION
-ARG VERSION=2.0.0
+ARG VERSION=2.1
 ARG REVISION=development
 RUN test "$(cat VERSION)" = "$VERSION" && CGO_ENABLED=0 go build -trimpath \
     -ldflags="-s -w -X main.version=$VERSION -X main.revision=$REVISION" \
     -o /out/gsmsniffer ./cmd/server
 
 FROM debian:bookworm-slim AS base
-ARG VERSION=2.0.0
+ARG VERSION=2.1
 ARG REVISION=development
 LABEL org.opencontainers.image.title="gsmsniffer" \
     org.opencontainers.image.description="Shielded, owner-operated GSM laboratory management" \
@@ -33,7 +33,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD ["/usr/local/bin/gsmsniffer", "healthcheck"]
 ENTRYPOINT ["/usr/local/bin/gsmsniffer"]
 
-# Explicit opt-in target; not the default image. Packages include Python/GNU Radio.
+# Dependencies are included in the single published image; RF remains opt-in.
 FROM base AS shielded
 USER root
 RUN printf 'wireshark-common wireshark-common/install-setuid boolean false\n' | debconf-set-selections \
@@ -41,5 +41,5 @@ RUN printf 'wireshark-common wireshark-common/install-setuid boolean false\n' | 
     && rm -rf /var/lib/apt/lists/*
 USER 10001:10001
 
-# Keep the final/default target free of RF tools.
-FROM base AS runtime
+# One image for both modes; the default remains unprivileged demo.
+FROM shielded AS runtime

@@ -51,20 +51,17 @@ Both listeners require the same token; host UI 18083 and API 8083 stay loopback-
 
 ## 4. Shielded hardware integration / 屏蔽实验集成
 
-Only owned test SIMs and terminals inside a verified shielded room/enclosure qualify. Confirm shielding before connecting RF paths. Building the optional target installs dependencies but grants **no device access** and does not activate RF jobs:
+Only owned test SIMs and terminals inside a verified shielded room/enclosure qualify. Confirm shielding before connecting RF paths. The single `addxemmm/gsmsniffer:2.1` image already includes gr-gsm/tshark. Installing these dependencies grants **no device access** and does not activate RF jobs. The same image is used for demo and shielded integration; no separate image tag or build target is required.
 
-```bash
-docker build --target shielded --build-arg VERSION=2.0.0 \
-  -f deploy/docker/Dockerfile -t gsmsniffer:2.0.0-shielded .
-```
+2.1 使用一个完整依赖镜像。默认 demo、无 USB 映射，启用依赖不等于启用硬件权限或开始任务。
 
 An operator must separately review driver/device compatibility, exact USB device permissions, applicable group IDs and RF adapter support before selecting `GSMSNIFFER_MODE=shielded`. Prefer the narrowest device mapping practical for the device; never map all of `/dev` or enable privileged/host networking. Do not assume the demo Compose file is a finished hardware deployment recipe.
 
-官方 Debian bookworm 提供 [gr-gsm](https://packages.debian.org/bookworm/gr-gsm) 和 [tshark](https://packages.debian.org/bookworm/tshark)。gr-gsm依赖GNU Radio/Python3；管理后端为Go，不代表可选镜像无Python。构建、依赖可用性、SDR设备兼容和真实RF采集是不同验收层级。
+官方 Debian bookworm 提供 [gr-gsm](https://packages.debian.org/bookworm/gr-gsm) 和 [tshark](https://packages.debian.org/bookworm/tshark)。gr-gsm依赖GNU Radio/Python3；管理后端为Go，不代表完整镜像无Python。构建、依赖可用性、SDR设备兼容和真实RF采集是不同验收层级。
 
 ### Explicit integration override / 显式集成覆盖
 
-`deploy/docker/compose.shielded.yml` is an opt-in **rootful Linux** integration template. It sets `user=0:0`, drops all capabilities then adds only `NET_RAW`, exposes `/dev/bus/usb` with character-device major 189 cgroup rules, and uses `HOME=/tmp`. This grants access to the USB bus, not just one device; review and narrow the mount/rules for the actual hardware. The default Compose command never loads it. It uses a separate `shielded_data` volume so root-written state does not break the non-root demo volume.
+`deploy/docker/compose.shielded.yml` is an opt-in **rootful Linux** integration template. It sets `user=0:0`, drops all capabilities then adds only `NET_RAW`, exposes `/dev/bus/usb` with character-device major 189 cgroup rules, and uses `HOME=/tmp`. This grants access to the USB bus, not just one device; review and narrow the mount/rules for the actual hardware. The default Compose command never loads it. It changes runtime mode, device permissions and state isolation, not the image version. It uses a separate `shielded_data` volume so root-written state does not break the non-root demo volume.
 
 `tshark -p` disables promiscuous mode. `NET_ADMIN` is intentionally not granted without evidence it is necessary; actual dumpcap/kernel/device permission behavior still needs laboratory acceptance. The override preserves bridge networking, read-only root, no-new-privileges and no automatic jobs. No `privileged` is used. Stop demo first if reusing the same Compose project.
 
@@ -80,6 +77,6 @@ RF operation has not been validated merely by writing these files. Record the ac
 
 ## 5. Upgrade, rollback and cleanup / 升级回滚
 
-Record the current image digest and private data backup before upgrading. Pull a confirmed version tag or digest, stop the old container, recreate with the same reviewed configuration, and run demo smoke tests first. If acceptance fails, stop it and recreate with the previous digest. Do not run two instances against the same SDR.
+Record the current image digest and private data backup before upgrading. Current deployments use `addxemmm/gsmsniffer:2.1`; preserve a local rollback image before old registry tags are removed. Pull a confirmed version tag or digest, stop the old container, recreate with the same reviewed configuration, and run demo smoke tests first. If acceptance fails, stop it and recreate with the previous digest. Do not run two instances against the same SDR.
 
 Stop jobs before stopping the service. Clear observations via the authenticated API when intended, then stop the container. Container/volume removal and private backup deletion are separate actions. No deployment script publishes artifacts or starts jobs implicitly.

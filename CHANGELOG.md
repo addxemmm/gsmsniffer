@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1 — 2026-09-09
+
+- Publish one complete image: `addxemmm/gsmsniffer:2.1`, including gr-gsm/tshark; no separate dependency or commit-qualified image tags.
+- Keep demo as the default, without device access or automatic jobs; the shielded Compose override selects mode and hardware permissions only.
+- Standardize frontend `18083` and API-only backend `8083`; retain loopback host bindings and `restart: "no"` (no boot startup).
+- Align version metadata, deployment examples and release workflow with the single-tag policy. Preserve 2.0.0 as a historical record.
+- Physical RF acceptance remains separate; see [2.1 notes](docs/releases/2.1.md).
+
 ## 2.0.0 — 2026-09-09
 
 ### Breaking / 破坏性变更

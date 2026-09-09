@@ -27,9 +27,10 @@ jobs:
           go build ./cmd/server
       - name: Publication surface check
         run: |
+          python3 scripts/test_hub_tags.py
           python3 scripts/test_release_export.py
           python3 scripts/release_export.py --check-only --check-tracked
-      - name: Build demo image (no push)
+      - name: Build complete image (no push; demo smoke only)
         run: docker build --target runtime --build-arg VERSION="$(cat VERSION)" --build-arg REVISION="$GITHUB_SHA" -f deploy/docker/Dockerfile -t gsmsniffer:ci .
       - name: Demo container read-only smoke (no RF)
         shell: bash
