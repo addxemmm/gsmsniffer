@@ -84,6 +84,10 @@ func (o Observation) MarshalJSON() ([]byte, error) {
 type Options struct {
 	Mode, DataDir      string
 	MaxDurationSeconds int
+	// Receiver settings are deployment-only, never accepted in HTTP job config.
+	DeviceArgs string
+	RXGain     *float64 // nil selects 24 dB; a pointer permits explicit zero gain.
+	PPM        int
 }
 type persisted struct {
 	Jobs         []Job         `json:"jobs"`
@@ -97,6 +101,7 @@ type running struct {
 type Manager struct {
 	mu           sync.Mutex
 	opts         Options
+	receiver     receiverConfig
 	jobs         []Job
 	observations []Observation
 	active       *running
@@ -116,7 +121,13 @@ func New(opts Options) (*Manager, error) {
 	if opts.MaxDurationSeconds < 1 || opts.MaxDurationSeconds > 3600 {
 		return nil, fmt.Errorf("%w: maximum duration must be 1..3600", ErrInvalid)
 	}
-	m := &Manager{opts: opts, jobs: []Job{}, observations: []Observation{}}
+	receiver, err := newReceiverConfig(opts)
+	if err != nil {
+		return nil, err
+	}
+	// Keep only the immutable normalized receiver values, not a caller-owned pointer.
+	opts.RXGain = nil
+	m := &Manager{opts: opts, receiver: receiver, jobs: []Job{}, observations: []Observation{}}
 	if opts.DataDir != "" {
 		if err := os.MkdirAll(opts.DataDir, 0700); err != nil {
 			return nil, fmt.Errorf("prepare data directory: %w", err)
@@ -232,7 +243,7 @@ func (m *Manager) execute(ctx context.Context, r *running, c Config) {
 	if m.opts.Mode == "demo" {
 		err = m.demo(ctx, c)
 	} else {
-		err = runShielded(ctx, c, m.observe)
+		err = runShielded(ctx, c, m.receiver, m.observe)
 	}
 	m.mu.Lock()
 	state, message := "finished", ""

@@ -15,6 +15,9 @@ Default Compose enables both listeners and binds UI/same-origin API to host loop
 | `GSMSNIFFER_MODE` | `demo`; opt-in `shielded` |
 | `GSMSNIFFER_DATA_DIR` | `/var/lib/gsmsniffer` |
 | `GSMSNIFFER_MAX_DURATION_SECONDS` | `300` |
+| `GSMSNIFFER_DEVICE_ARGS` | Optional gr-osmosdr device arguments; BlackSDR deployment sets an explicit UHD serial |
+| `GSMSNIFFER_RX_GAIN` | `24` dB; finite value in `0..76` |
+| `GSMSNIFFER_PPM` | `0`; integer correction in `-200..200` (scanner CLI requires integer ppm) |
 | `GSMSNIFFER_HEALTHCHECK_URL` | Unset: check both listeners; nonempty: override probe URL / 默认检查双端口，非空时覆盖探测URL |
 
 Compose-only variables: `GSMSNIFFER_IMAGE`, `GSMSNIFFER_BIND` (host UI bind, default `127.0.0.1`), `GSMSNIFFER_API_BIND` (host backend bind, default `127.0.0.1`), `GSMSNIFFER_PORT` (host UI, default `18083`), `GSMSNIFFER_API_PORT` (host backend, default `8083`), `GSMSNIFFER_TOKEN_PATH`. 宿主前后端地址和端口分别配置，容器监听地址用上表两个ADDR；两端口须不同。 Use an absolute host token path only with the optional `compose.auth.yml` overlay; the base file requires no secret. `.env.example` contains placeholders only; pass `--env-file .env` explicitly if copying it.
@@ -98,13 +101,43 @@ The console permits HTTP token submission only on loopback or literal RFC1918 pr
 
 ## 4. Shielded hardware integration / 屏蔽实验集成
 
+### BlackSDR / B210 USB integration
+
+Use the UHD 4.1 image build and `compose.blacksdr.yml` for the BlackSDR-compatible B210 board. Do not assume an Ettus stock FPGA is compatible with a clone board. Reuse the **already validated, matching** FPGA, FX3 firmware and bootloader from the operator's LTE/GSM installation; preserve their hashes in private deployment records. Vendor firmware is not redistributed in this repository or image.
+
+```dotenv
+GSMSNIFFER_MODE=shielded
+GSMSNIFFER_DEVICE_ARGS=uhd,type=b200,serial=SERIAL
+GSMSNIFFER_RX_GAIN=24
+GSMSNIFFER_PPM=0
+GSMSNIFFER_USB_BUS_PATH=/dev/bus/usb/BUS
+GSMSNIFFER_UHD_IMAGES_PATH=/absolute/path/to/validated-uhd-images
+```
+
+Replace `SERIAL`, `BUS` and the firmware directory using actual device discovery. The host management IP is **not** a USB USRP `addr`. The firmware directory must contain `usrp_b210_fpga.bin`, `usrp_b200_fw.hex` and `usrp_b200_bl.img` validated for this exact board/UHD combination. The container reads it through `UHD_IMAGES_DIR=/opt/uhd-images`; no firmware is flashed to EEPROM by the application. UHD may load device RAM/FPGA during device initialization.
+
+```bash
+# First verify no LTE/GSM transceiver, eNB or other receiver owns this device.
+# Do not stop another service automatically or probe a busy radio.
+docker compose --env-file /absolute/path/to/deployment.env \
+  -f deploy/docker/compose.yml -f deploy/docker/compose.blacksdr.yml config --quiet
+docker compose --env-file /absolute/path/to/deployment.env \
+  -f deploy/docker/compose.yml -f deploy/docker/compose.blacksdr.yml up -d --no-build
+```
+
+Only the selected USB bus is mounted, rather than the complete USB tree; devices on that bus are accessible to the container. A bus mount tolerates device-number changes during firmware initialization. Recheck the path after replugging or moving a USB port. Both host paths must exist. Keep the base and BlackSDR overlay on every update; do **not** combine the generic shielded overlay with this one. This configuration uses isolated `shielded_data`, keeps the old demo volume untouched, and preserves `restart: "no"`, both management ports and the existing auth mode. No scan starts merely from deploying.
+
+`GSMSNIFFER_DEVICE_ARGS`, `GSMSNIFFER_RX_GAIN` and `GSMSNIFFER_PPM` are deployment settings, not HTTP command parameters. Scan and subsequent selected-frequency capture receive the same settings as separate process arguments. Start with a bounded receive-only frequency scan; empty results mean no channels were decoded in that interval, never permission to invent demonstration results. A USB discovery or probe success alone does not prove reception. Record RF results separately from management health and build tests.
+
+实际部署请选择 `shielded`，频点与后续采集均来自真实运行路径，绝不回退生成 `999` 演示记录。真实数据卷与原演示数据隔离。一次只允许一个程序使用同一 SDR；LTE/GSM 管理容器运行不等于无线进程占用，但开启其小区前必须先停止本工具任务。仅对屏蔽室/箱内自有测试系统接收；不启动发射。
+
 Only owned test SIMs and terminals inside a verified shielded room/enclosure qualify. Confirm shielding before connecting RF paths. The single `addxemmm/gsmsniffer:2.1` image already includes gr-gsm/tshark. Installing these dependencies grants **no device access** and does not activate RF jobs. The same image is used for demo and shielded integration; no separate image tag or build target is required.
 
 2.1 使用一个完整依赖镜像。默认 demo、无 USB 映射，启用依赖不等于启用硬件权限或开始任务。
 
 An operator must separately review driver/device compatibility, exact USB device permissions, applicable group IDs and RF adapter support before selecting `GSMSNIFFER_MODE=shielded`. Prefer the narrowest device mapping practical for the device; never map all of `/dev` or enable privileged/host networking. Do not assume the demo Compose file is a finished hardware deployment recipe.
 
-官方 Debian bookworm 提供 [gr-gsm](https://packages.debian.org/bookworm/gr-gsm) 和 [tshark](https://packages.debian.org/bookworm/tshark)。gr-gsm依赖GNU Radio/Python3；管理后端为Go，不代表完整镜像无Python。构建、依赖可用性、SDR设备兼容和真实RF采集是不同验收层级。
+BlackSDR 镜像使用 Ubuntu 22.04 的 UHD 4.1、GNU Radio 3.10，以及固定 Debian gr-gsm 源码编译产物，见 [组件与源码说明](../THIRD_PARTY_NOTICES.md)。管理后端为 Go，不代表完整镜像无 Python。构建、依赖可用性、SDR 设备兼容和真实 RF 采集是不同验收层级。
 
 ### Explicit integration override / 显式集成覆盖
 

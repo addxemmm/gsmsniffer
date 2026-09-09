@@ -46,12 +46,12 @@ func command(ctx context.Context, name string, args []string, out io.Writer) *ex
 	return c
 }
 
-func runShielded(ctx context.Context, c Config, emit func(Observation)) error {
+func runShielded(ctx context.Context, c Config, receiver receiverConfig, emit func(Observation)) error {
 	childCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	var commands []*exec.Cmd
 	if c.Kind == "scan" {
-		commands = []*exec.Cmd{command(childCtx, "grgsm_scanner", []string{"-b", c.Band}, newLines(func(s string) {
+		commands = []*exec.Cmd{command(childCtx, "grgsm_scanner", append(receiver.args(), "-b", c.Band), newLines(func(s string) {
 			if o, ok := parseScan(s); ok {
 				emit(o)
 			}
@@ -72,7 +72,7 @@ func runShielded(ctx context.Context, c Config, emit func(Observation)) error {
 					emit(o)
 				}
 			})),
-			command(childCtx, "grgsm_livemon_headless", []string{"-f", strconv.FormatFloat(c.FrequencyMHz, 'f', 1, 64) + "M"}, io.Discard),
+			command(childCtx, "grgsm_livemon_headless", append(receiver.args(), "-f", strconv.FormatFloat(c.FrequencyMHz, 'f', 1, 64)+"M"), io.Discard),
 		}
 	}
 	type result struct{ err error }

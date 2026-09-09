@@ -2,6 +2,8 @@
 
 ## Scan-first workflow / 先扫频点再扫描 IMSI、SMS
 
+**BlackSDR / USRP 实机部署：** 使用 [BlackSDR 部署说明](docs/DEPLOY.md#blacksdr--b210-usb-integration)，选择 `shielded` 模式、明确设备序列号并挂载已验证的 UHD 4.1 兼容固件。基础 Compose 的 `demo` 仅供无硬件测试，固定 `999` 数据不是接收结果。实际部署采用独立硬件数据卷，不混入旧演示数据。
+
 1. 打开默认的“扫描工作台”，选择 GSM900 或 DCS1800，确认屏蔽条件后开始频点扫描。
 2. 扫描结果实时显示在同一页，可按扫描批次筛选。扫描完成或点击“停止任务”后，频点行的 IMSI / SMS 按钮才可选择。
 3. 点击频点行的 IMSI 或 SMS，自动带入频段、频率和来源扫描任务；这些参数不再手动填写。

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -91,7 +92,12 @@ func run() error {
 		return errors.New("GSMSNIFFER_MAX_DURATION_SECONDS must be 1..3600")
 	}
 	mode := env("GSMSNIFFER_MODE", "demo")
-	manager, err := lab.New(lab.Options{Mode: mode, DataDir: env("GSMSNIFFER_DATA_DIR", "./data"), MaxDurationSeconds: maxDuration})
+	opts, err := loadReceiverOptions()
+	if err != nil {
+		return err
+	}
+	opts.Mode, opts.DataDir, opts.MaxDurationSeconds = mode, env("GSMSNIFFER_DATA_DIR", "./data"), maxDuration
+	manager, err := lab.New(opts)
 	if err != nil {
 		return err
 	}
@@ -134,6 +140,35 @@ func run() error {
 		}
 	}
 	return result
+}
+
+// Receiver options are startup configuration only and are never read from HTTP.
+func loadReceiverOptions() (lab.Options, error) {
+	parse := func(key, fallback string, lo, hi float64) (float64, error) {
+		raw := env(key, fallback)
+		if len(raw) > 32 {
+			return 0, fmt.Errorf("%s must be at most 32 characters", key)
+		}
+		value, err := strconv.ParseFloat(raw, 64)
+		if err != nil || math.IsNaN(value) || math.IsInf(value, 0) || value < lo || value > hi {
+			return 0, fmt.Errorf("%s must be a finite number in %g..%g (at most 32 characters)", key, lo, hi)
+		}
+		return value, nil
+	}
+	gain, err := parse("GSMSNIFFER_RX_GAIN", "24", 0, 76)
+	if err != nil {
+		return lab.Options{}, err
+	}
+	// Scanner accepts integer PPM; use that common subset for both RF tools.
+	ppmRaw := env("GSMSNIFFER_PPM", "0")
+	if len(ppmRaw) > 32 {
+		return lab.Options{}, errors.New("GSMSNIFFER_PPM must be at most 32 characters")
+	}
+	ppm, err := strconv.Atoi(ppmRaw)
+	if err != nil || ppm < -200 || ppm > 200 {
+		return lab.Options{}, errors.New("GSMSNIFFER_PPM must be an integer in -200..200")
+	}
+	return lab.Options{DeviceArgs: os.Getenv("GSMSNIFFER_DEVICE_ARGS"), RXGain: &gain, PPM: ppm}, nil
 }
 
 func newServers(apiHandler, ui http.Handler) []*http.Server {

@@ -16,6 +16,9 @@ services:
       GSMSNIFFER_TOKEN: "${GSMSNIFFER_TOKEN:-}"
       GSMSNIFFER_DATA_DIR: /var/lib/gsmsniffer
       GSMSNIFFER_MAX_DURATION_SECONDS: "300"
+      GSMSNIFFER_DEVICE_ARGS: "${GSMSNIFFER_DEVICE_ARGS:-}"
+      GSMSNIFFER_RX_GAIN: "${GSMSNIFFER_RX_GAIN:-24}"
+      GSMSNIFFER_PPM: "${GSMSNIFFER_PPM:-0}"
     volumes:
       - app_data:/var/lib/gsmsniffer
     read_only: true

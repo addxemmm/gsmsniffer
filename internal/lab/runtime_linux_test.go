@@ -4,11 +4,13 @@ package lab
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"syscall"
 	"testing"
@@ -19,6 +21,12 @@ import (
 func TestMain(m *testing.M) {
 	if os.Getenv("GSMLAB_TEST_HELPER") == "1" {
 		name := filepath.Base(os.Args[0])
+		if dir := os.Getenv("GSMLAB_TEST_ARGV_DIR"); dir != "" {
+			data, err := json.Marshal(os.Args[1:])
+			if err != nil || os.WriteFile(filepath.Join(dir, name+".json"), data, 0600) != nil {
+				os.Exit(97)
+			}
+		}
 		behavior := os.Getenv("GSMLAB_TEST_BEHAVIOR")
 		if behavior == "fail" || (behavior == "fail-one" && name == "tshark") {
 			os.Exit(7)
@@ -137,8 +145,52 @@ func TestShieldedUnavailable(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	if err := runShielded(ctx, fixture(), func(Observation) {}); err == nil {
+	if err := runShielded(ctx, fixture(), receiverConfig{gain: 24}, func(Observation) {}); err == nil {
 		t.Fatal("missing executable accepted")
+	}
+}
+
+func TestShieldedReceiverArgvMatchesScanAndCapture(t *testing.T) {
+	helperRuntime(t)
+	dir := t.TempDir()
+	t.Setenv("GSMLAB_TEST_ARGV_DIR", dir)
+	gain := 33.5
+	m := manager(t, Options{Mode: "shielded", DeviceArgs: "uhd,type=b200,serial=SERIAL", RXGain: &gain, PPM: -2})
+	scan := scanForCapture(t, m)
+	c := captureFrom(scan, "sms")
+	c.DurationSeconds = 30
+	j, err := m.Start(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		_, err = os.Stat(filepath.Join(dir, "grgsm_livemon_headless.json"))
+		if err == nil || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if _, err = m.Stop(j.ID); err != nil {
+		t.Fatal(err)
+	}
+	common := []string{"-g", "33.5", "-p", "-2", "--args=uhd,type=b200,serial=SERIAL"}
+	for name, suffix := range map[string][]string{
+		"grgsm_scanner":          {"-b", "GSM900"},
+		"grgsm_livemon_headless": {"-f", "935.2M"},
+	} {
+		data, err := os.ReadFile(filepath.Join(dir, name+".json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got []string
+		if err := json.Unmarshal(data, &got); err != nil {
+			t.Fatal(err)
+		}
+		want := append(append([]string{}, common...), suffix...)
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("%s argv = %q; want %q", name, got, want)
+		}
 	}
 }
 

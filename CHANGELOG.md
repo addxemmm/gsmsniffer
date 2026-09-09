@@ -31,3 +31,9 @@
 - Record actual software/container results in release notes.
 - Shielded RF hardware acceptance remains a separate requirement; this changelog does not claim it has passed.
 - This entry describes source changes, not confirmation of public repository/image publication.
+# BlackSDR hardware integration (2.1)
+
+- Align the real-device image with the reference LTE/GSM stack: Ubuntu 22.04, UHD 4.1 and pinned GNU Radio 3.10 gr-gsm source.
+- Add deployment-only device arguments, receive gain and integer PPM settings shared by scan and capture; invalid settings fail startup.
+- Add explicit BlackSDR USB-bus and read-only firmware mounts with separate hardware data, preserving ports, optional auth and restart `no`.
+- 真实运行模式不生成演示数据；设备发现、接收扫频与 IMSI/SMS 接收分别验收，不将管理健康检查当作射频成功。

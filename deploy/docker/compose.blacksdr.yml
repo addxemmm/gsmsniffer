@@ -1,0 +1,29 @@
+# Use with compose.yml, not with compose.shielded.yml. No jobs start on boot.
+# Required host paths must exist; Compose must not create empty firmware directories.
+services:
+  gsmsniffer:
+    user: "0:0"
+    environment:
+      GSMSNIFFER_MODE: shielded
+      GSMSNIFFER_DEVICE_ARGS: "${GSMSNIFFER_DEVICE_ARGS:?Set the explicit UHD device arguments}"
+      UHD_IMAGES_DIR: /opt/uhd-images
+      HOME: /tmp
+    cap_drop: [ALL]
+    cap_add: [NET_RAW]
+    device_cgroup_rules:
+      - "c 189:* rwm"
+    volumes:
+      - type: bind
+        source: "${GSMSNIFFER_USB_BUS_PATH:?Set the USRP USB bus directory}"
+        target: "${GSMSNIFFER_USB_BUS_PATH:?Set the USRP USB bus directory}"
+        bind:
+          create_host_path: false
+      - type: bind
+        source: "${GSMSNIFFER_UHD_IMAGES_PATH:?Set the validated BlackSDR UHD 4.1 firmware directory}"
+        target: /opt/uhd-images
+        read_only: true
+        bind:
+          create_host_path: false
+      - shielded_data:/var/lib/gsmsniffer
+volumes:
+  shielded_data:

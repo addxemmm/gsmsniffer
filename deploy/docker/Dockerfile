@@ -11,7 +11,30 @@ RUN test "$(cat VERSION)" = "$VERSION" && CGO_ENABLED=0 go build -trimpath \
     -ldflags="-s -w -X main.version=$VERSION -X main.revision=$REVISION" \
     -o /out/gsmsniffer ./cmd/server
 
-FROM debian:bookworm-slim AS base
+# Match the operator's working LTE/GSM UHD 4.1 stack. Jammy does not package
+# gr-gsm, so build its pinned GNU Radio 3.10 source against Jammy libraries.
+FROM ubuntu:22.04 AS radio-build
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    ca-certificates curl xz-utils build-essential cmake pkg-config gnuradio-dev \
+    libosmocore-dev gr-osmosdr python3-dev python3-matplotlib python3-numpy \
+    python3-scipy python3-six libcppunit-dev && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+RUN curl -fsSL --retry 3 https://deb.debian.org/debian/pool/main/g/gr-gsm/gr-gsm_1.0.0~20220727.orig.tar.xz -o gr-gsm.tar.xz \
+    && echo '968f262dd7090b1d5951a5c743296c8ba063cc71127667dacb18aa4bcdb22153  gr-gsm.tar.xz' | sha256sum -c - \
+    && tar -xf gr-gsm.tar.xz \
+    && cmake -S gr-gsm-1.0.0~20220727 -B build \
+       -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release \
+       -DLIB_SUFFIX=/$(dpkg-architecture -qDEB_HOST_MULTIARCH) \
+       -DPYTHON_EXECUTABLE=/usr/bin/python3 -DGR_PYTHON_DIR=/usr/lib/python3/dist-packages \
+       -DENABLE_PYTHON=ON -DENABLE_GRC=ON -DENABLE_GRCC=ON \
+       -DENABLE_GSM_LIVEMON_HEADLESS=ON -DENABLE_DOXYGEN=OFF \
+    && cmake --build build --parallel 2 \
+    && DESTDIR=/stage cmake --install build \
+    && mkdir -p /stage/usr/share/doc/gr-gsm \
+    && cp gr-gsm.tar.xz /stage/usr/share/doc/gr-gsm/source.tar.xz \
+    && cp gr-gsm-1.0.0~20220727/COPYING /stage/usr/share/doc/gr-gsm/COPYING
+
+FROM ubuntu:22.04 AS base
 ARG VERSION=2.1
 ARG REVISION=development
 LABEL org.opencontainers.image.title="gsmsniffer" \
@@ -37,8 +60,15 @@ ENTRYPOINT ["/usr/local/bin/gsmsniffer"]
 FROM base AS shielded
 USER root
 RUN printf 'wireshark-common wireshark-common/install-setuid boolean false\n' | debconf-set-selections \
-    && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends gr-gsm tshark \
+    && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+       gnuradio gr-osmosdr uhd-host tshark libosmocore18 libosmogsm17 libosmocoding0 libosmocodec0 \
+       python3-matplotlib python3-numpy python3-scipy python3-six \
     && rm -rf /var/lib/apt/lists/*
+COPY --from=radio-build /stage/usr/ /usr/
+RUN ldconfig && uhd_config_info --version | grep 'UHD 4.1.' \
+    && python3 -c 'from gnuradio import gsm; import osmosdr' \
+    && grgsm_scanner --help >/dev/null \
+    && grgsm_livemon_headless --help >/dev/null
 USER 10001:10001
 
 # One image for both modes; the default remains unprivileged demo.

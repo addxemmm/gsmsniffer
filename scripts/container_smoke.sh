@@ -33,4 +33,7 @@ if docker run --rm --network none -e GSMSNIFFER_TOKEN_FILE=/missing-token "$imag
 fi
 grep -q 'read token file' "$temp/invalid.log"
 env -u GSMSNIFFER_TOKEN_PATH -u GSMSNIFFER_TOKEN docker compose -f deploy/docker/compose.yml config --quiet
+GSMSNIFFER_DEVICE_ARGS=uhd,type=b200,serial=SERIAL \
+GSMSNIFFER_USB_BUS_PATH=/dev/bus/usb/001 GSMSNIFFER_UHD_IMAGES_PATH=/tmp/firmware \
+  docker compose -f deploy/docker/compose.yml -f deploy/docker/compose.blacksdr.yml config --quiet
 echo 'Anonymous and token-enabled containers passed; invalid file failed closed; base Compose needs no secret.'
