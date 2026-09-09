@@ -27,6 +27,7 @@ jobs:
           go build ./cmd/server
       - name: Publication surface check
         run: |
+          node scripts/test_web_transport.js
           python3 scripts/test_hub_tags.py
           python3 scripts/test_release_export.py
           python3 scripts/release_export.py --check-only --check-tracked

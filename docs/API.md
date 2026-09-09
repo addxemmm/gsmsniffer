@@ -2,6 +2,8 @@
 
 Direct backend base URL: `http://127.0.0.1:8083/api/v1`. The frontend retains the same-origin API at `http://127.0.0.1:18083/api/v1`; it does not make cross-origin browser requests to port 8083. Both listeners are enabled by default. The backend is API-only: `/` returns 404, not the Web console. All API routes require `Authorization: Bearer TOKEN`, including the OpenAPI endpoint. Health routes `/healthz` and `/readyz` are unauthenticated and expose only liveness/readiness.
 
+For explicitly enabled trusted-LAN deployment, replace the host with `HOST` (the server's RFC1918 private IPv4 address): `http://HOST:8083/api/v1`. HTTP sends tokens and data without encryption; restrict access to trusted clients and do not forward ports to the Internet. See [Deployment](DEPLOY.md) for both bind variables. 前端仍使用 `http://HOST:18083` 同源 API，无需跨域配置。
+
 所有 API 均须 Bearer 鉴权；Token 不应放入 URL、日志或截图。后端监听器默认 `GSMSNIFFER_API_ADDR=:8083`，只提供API；前端默认 `GSMSNIFFER_ADDR=:18083` 并保留同源API，避免跨域。两个监听器均默认启用，使用相同Token。
 
 Standard JSON envelope (OpenAPI alone returns its native schema representation):

@@ -41,7 +41,7 @@ Triggering the workflow does not itself confirm publication. Verify its successf
 3. Pass tests, full image build and demo-only smoke checks on both ports; do not imply RF acceptance.
 4. Record source commit and final image digest. Review SBOM, vulnerability results and installed package copyright/source obligations before distribution.
 5. Publish the single `2.1` tag and verify it can be pulled. Use no devices for the initial container check.
-6. Separately deploy with the existing token/data volume, preserve loopback bindings and confirm `RestartPolicy.Name=no`, both health endpoints and no active startup jobs.
+6. Separately deploy with the existing token/data volume and reviewed network bindings: loopback by default, or the explicit trusted-LAN configuration from [Deployment](DEPLOY.md). Confirm `RestartPolicy.Name=no`, both health endpoints and no active startup jobs. For LAN deployment, verify access from a second trusted client and preserve ingress restrictions; do not expose HTTP management ports to the Internet.
 7. Only after successful deployment, inventory old tags and remove the explicitly approved obsolete tags. Preserve `2.1`, verify its digest before cleanup and check the final tag list. Delete by tag, not by a shared manifest digest. Keep rollback artifacts locally before cleanup; do not remove other projects' images or data volumes.
 8. Publish sanitized release evidence. Retain the [2.0.0 historical record](releases/2.0.0.md), without presenting old tags or ports as current deployment guidance.
 

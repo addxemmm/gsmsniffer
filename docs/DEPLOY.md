@@ -17,7 +17,7 @@ Default Compose enables both listeners and binds UI/same-origin API to host loop
 | `GSMSNIFFER_MAX_DURATION_SECONDS` | `300` |
 | `GSMSNIFFER_HEALTHCHECK_URL` | Unset: check both listeners; nonempty: override probe URL / 默认检查双端口，非空时覆盖探测URL |
 
-Compose-only variables: `GSMSNIFFER_IMAGE`, `GSMSNIFFER_BIND`, `GSMSNIFFER_PORT` (host UI, default `18083`), `GSMSNIFFER_API_PORT` (host backend, default `8083`), `GSMSNIFFER_TOKEN_PATH`. 宿主前后端端口分别配置，容器监听地址用上表两个ADDR；两端口须不同。 Use an absolute host token path. `.env.example` contains placeholders only; pass `--env-file .env` explicitly if copying it.
+Compose-only variables: `GSMSNIFFER_IMAGE`, `GSMSNIFFER_BIND` (host UI bind, default `127.0.0.1`), `GSMSNIFFER_API_BIND` (host backend bind, default `127.0.0.1`), `GSMSNIFFER_PORT` (host UI, default `18083`), `GSMSNIFFER_API_PORT` (host backend, default `8083`), `GSMSNIFFER_TOKEN_PATH`. 宿主前后端地址和端口分别配置，容器监听地址用上表两个ADDR；两端口须不同。 Use an absolute host token path. `.env.example` contains placeholders only; pass `--env-file .env` explicitly if copying it.
 
 ## 2. Secrets / 密钥
 
@@ -47,7 +47,33 @@ The API listener is enabled by the base Compose file. `compose.api.yml` remains 
 docker compose -f deploy/docker/compose.yml -f deploy/docker/compose.api.yml up -d --build
 ```
 
-Both listeners require the same token; host UI 18083 and API 8083 stay loopback-only by default. The backend serves API/health only and returns 404 for `/`. 两端共用Token；后端根路径不提供前端页面。 Remote users should tunnel the management port using `ssh -L 18083:127.0.0.1:18083 USER@HOST`; verify the SSH host key independently. No private host or SSH password is stored in this project.
+Both listeners require the same token; host UI 18083 and API 8083 stay loopback-only by default. The backend serves API/health only and returns 404 for `/`. 两端共用Token；后端根路径不提供前端页面。 An SSH tunnel remains an option: `ssh -L 18083:127.0.0.1:18083 USER@HOST`; verify the SSH host key independently. No private host or SSH password is stored in this project.
+
+### Trusted LAN HTTP / 受信任局域网 HTTP
+
+无需域名或 HTTPS 证书时，可显式允许局域网访问。保留已有 Token、数据卷、镜像 `addxemmm/gsmsniffer:2.1` 和 `restart: "no"`，仅修改部署环境文件中的宿主绑定地址：
+
+```dotenv
+GSMSNIFFER_BIND=0.0.0.0
+GSMSNIFFER_API_BIND=0.0.0.0
+GSMSNIFFER_PORT=18083
+GSMSNIFFER_API_PORT=8083
+```
+
+```bash
+# Keep the existing project name, env file and token path; do not create a second deployment.
+docker compose --env-file /absolute/path/to/deployment.env -f deploy/docker/compose.yml config --quiet
+docker compose --env-file /absolute/path/to/deployment.env -f deploy/docker/compose.yml up -d --no-build
+# Run from another trusted LAN client; HOST is the server's RFC1918 private IPv4 address.
+curl --fail http://HOST:18083/healthz
+curl --fail http://HOST:8083/healthz
+```
+
+浏览器访问 `http://HOST:18083`；直接 API 基址为 `http://HOST:8083/api/v1`。前端通过 18083 同源接口登录和操作，不需要跨域访问 8083。使用既有 Compose 项目名（如原命令有 `-p`，继续带上）和同一个环境文件，以保留原数据卷。后续更新仍应传入该环境文件，避免意外恢复 loopback。
+
+The console permits HTTP token submission only on loopback or literal RFC1918 private IPv4 hosts; HTTPS is also supported. A LAN hostname is not automatically trusted: use the private IPv4 address, or configure HTTPS. **HTTP does not encrypt bearer tokens or data.** Only use this option on a trusted LAN; prevent Internet port forwarding and restrict ingress to intended clients using appropriate host/network firewall rules. Binding `0.0.0.0` listens on every IPv4 interface, not just the LAN interface; it is not an access-control rule. Verify access from a second LAN machine and verify that untrusted networks cannot reach either port. The API still requires its bearer token; the browser transport check is not a substitute for firewall protection.
+
+**HTTP 明文传输 Token 与数据。** `0.0.0.0` 表示所有 IPv4 网卡，不会自动限制为局域网；须结合宿主及网络边界规则限制可信来源，禁止公网端口转发。浏览器的地址检查不代替防火墙，直接 API 调用仍须携带 Token。扩大网络监听不会启用 RF 设备、创建任务或改变不开机自启策略。
 
 ## 4. Shielded hardware integration / 屏蔽实验集成
 

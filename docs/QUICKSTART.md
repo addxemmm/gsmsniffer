@@ -19,4 +19,6 @@ The image includes gr-gsm/tshark but defaults to demo without USB mapping. Compo
 
 同一2.1镜像包含完整依赖，默认仅demo；不需要额外镜像标签。服务不开机自启，镜像存在不代表真实射频验收完成。
 
+For trusted LAN HTTP without a domain or certificate, follow [Deployment](DEPLOY.md#trusted-lan-http--受信任局域网-http): explicitly set both `GSMSNIFFER_BIND=0.0.0.0` and `GSMSNIFFER_API_BIND=0.0.0.0` in the existing deployment environment file, then recreate the same Compose project. Visit `http://HOST:18083`, with `HOST` replaced by the server's RFC1918 private IPv4 address. HTTP 明文传输 Token 与数据，仅限可信局域网并限制来源，禁止公网端口转发；默认 Compose 仍绑定 loopback。
+
 For local development use Go 1.26, `go test ./...`, and `go run ./cmd/server`, with a readable token file and both `GSMSNIFFER_ADDR=127.0.0.1:18083` and `GSMSNIFFER_API_ADDR=127.0.0.1:8083` for loopback-only local listeners. 本地开发建议两个ADDR都指定loopback；应用默认分别为 `:18083` 和 `:8083`。 Windows PowerShell uses `$env:GSMSNIFFER_TOKEN_FILE='C:\absolute\path\api_token'`.

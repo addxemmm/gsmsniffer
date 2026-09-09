@@ -38,9 +38,9 @@ curl --fail http://127.0.0.1:18083/healthz
 curl --fail http://127.0.0.1:8083/healthz
 ```
 
-Open `http://127.0.0.1:18083`; use the generated token in the console. Remote access should use an SSH tunnel (`ssh -L 18083:127.0.0.1:18083 USER@HOST`) or an authenticated TLS reverse proxy. Do not publish management ports directly to the Internet. The sample contains no server passwords or account tokens.
+Open `http://127.0.0.1:18083`; use the generated token in the console. For trusted LAN access without a domain or certificate, explicitly set both `GSMSNIFFER_BIND=0.0.0.0` and `GSMSNIFFER_API_BIND=0.0.0.0` before recreating the container, then visit `http://HOST:18083`, replacing `HOST` with the server's RFC1918 private IPv4 address. HTTP transmits the bearer token and data without encryption: restrict access to trusted LAN clients and do not forward these ports to the Internet. An SSH tunnel (`ssh -L 18083:127.0.0.1:18083 USER@HOST`) or TLS reverse proxy remains available. The sample contains no server passwords or account tokens.
 
-打开 `http://127.0.0.1:18083` 控制台，输入生成的 Token；直接后端 API 使用 `http://127.0.0.1:8083/api/v1`。默认Compose将两个宿主端口均绑定loopback。远程使用 SSH 隧道或带 TLS 的管理代理，不直接暴露管理端口。示例不包含服务器凭据。Token 文件权限、清理和回滚见 [部署指南](docs/DEPLOY.md)。
+默认 Compose 将两个宿主端口绑定 loopback。仅在受信任局域网使用时，可显式将上述两个 BIND 变量设为 `0.0.0.0` 并重建容器：前端 `http://HOST:18083`，后端 `http://HOST:8083/api/v1`，`HOST` 替换为服务器的 RFC1918 私有 IPv4 地址，无需域名或证书。HTTP 会明文传输 Token 与数据，须限制可信网段访问，禁止公网端口转发。前端只允许 loopback、RFC1918 私有 IPv4 上的 HTTP 登录或 HTTPS 登录；普通主机名不视为私有地址。详细命令、Token 权限、清理和回滚见 [部署指南](docs/DEPLOY.md)。
 
 ```bash
 # Development: Go 1.26; no Node build step required.

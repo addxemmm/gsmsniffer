@@ -12,7 +12,7 @@
     },
     {
       "url": "http://{host}:{port}",
-      "description": "Direct backend API via localhost/SSH tunnel. Use HTTPS for nonlocal deployments.",
+      "description": "Direct backend API via localhost/SSH tunnel or explicitly configured trusted LAN HTTP. HTTP sends credentials unencrypted; use HTTPS outside a trusted LAN.",
       "variables": {
         "host": {
           "default": "127.0.0.1"
