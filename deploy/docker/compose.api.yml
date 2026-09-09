@@ -1,0 +1,7 @@
+# Optional direct API listener. Same bearer authentication; loopback only.
+services:
+  gsmsniffer:
+    environment:
+      GSMSNIFFER_API_ADDR: ":8083"
+    ports:
+      - "127.0.0.1:8083:8083"

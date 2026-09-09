@@ -1,0 +1,23 @@
+# Deny by default: never send legacy captures, credentials, or Git history.
+**
+!go.mod
+!go.sum
+!VERSION
+!cmd/
+!cmd/**
+!internal/
+!internal/**
+!webui/
+!webui/**
+!docs/
+!docs/api/
+!docs/api/**
+!deploy/
+!deploy/docker/
+!deploy/docker/Dockerfile
+**/*_test.go
+**/.env*
+**/*.log
+**/*.pcap*
+**/*.pem
+**/*.key

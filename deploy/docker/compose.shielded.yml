@@ -1,0 +1,22 @@
+# EXPLICIT OPT-IN: owned test devices inside verified RF shielding only.
+# Rootful Linux integration template; never loaded by the default Compose command.
+# This exposes the USB bus to this container. Review/narrow for your hardware.
+# It enables dependencies and access, but does not create or start a job.
+services:
+  gsmsniffer:
+    image: ${GSMSNIFFER_SHIELDED_IMAGE:-gsmsniffer:2.0.0-shielded}
+    build:
+      target: shielded
+    user: "0:0"
+    environment:
+      GSMSNIFFER_MODE: shielded
+      HOME: /tmp
+    cap_drop: [ALL]
+    cap_add: [NET_RAW]
+    device_cgroup_rules:
+      - "c 189:* rwm"
+    volumes:
+      - /dev/bus/usb:/dev/bus/usb
+      - shielded_data:/var/lib/gsmsniffer
+volumes:
+  shielded_data:

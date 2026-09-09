@@ -1,0 +1,348 @@
+{
+  "info": {
+    "name": "GSM-SNIFFER v2 read-only acceptance",
+    "description": "Owned test SIMs/terminals only inside RF-shielded rooms/enclosures. Read-only by default. Set allowMutations=true explicitly for demo-only job/cancel/clear examples; run status first. No shared token values.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8080"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "allowMutations",
+      "value": "false"
+    },
+    {
+      "key": "jobId",
+      "value": ""
+    },
+    {
+      "key": "serviceMode",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Service status",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/status"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Successful HTTP response', function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+              "pm.test('Standard envelope', function () { const body = pm.response.json(); ['code','message','data','request_id'].forEach(k => pm.expect(body).to.have.property(k)); pm.expect(body.request_id).to.be.a('string').and.not.empty; });",
+              "if (pm.response.code === 200) pm.collectionVariables.set('serviceMode', pm.response.json().data.mode);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Capabilities",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/capabilities"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Successful HTTP response', function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+              "pm.test('Standard envelope', function () { const body = pm.response.json(); ['code','message','data','request_id'].forEach(k => pm.expect(body).to.have.property(k)); pm.expect(body.request_id).to.be.a('string').and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Jobs (read only)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/jobs"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Successful HTTP response', function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+              "pm.test('Standard envelope', function () { const body = pm.response.json(); ['code','message','data','request_id'].forEach(k => pm.expect(body).to.have.property(k)); pm.expect(body.request_id).to.be.a('string').and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Frequency observations",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/observations?kind=frequencies&limit=100&offset=0"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Successful HTTP response', function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+              "pm.test('Standard envelope', function () { const body = pm.response.json(); ['code','message','data','request_id'].forEach(k => pm.expect(body).to.have.property(k)); pm.expect(body.request_id).to.be.a('string').and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "IMSI observations (redacted)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/observations?kind=imsi&limit=100&offset=0"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Successful HTTP response', function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+              "pm.test('Standard envelope', function () { const body = pm.response.json(); ['code','message','data','request_id'].forEach(k => pm.expect(body).to.have.property(k)); pm.expect(body.request_id).to.be.a('string').and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "SMS observations (redacted)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/observations?kind=sms&limit=100&offset=0"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Successful HTTP response', function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+              "pm.test('Standard envelope', function () { const body = pm.response.json(); ['code','message','data','request_id'].forEach(k => pm.expect(body).to.have.property(k)); pm.expect(body.request_id).to.be.a('string').and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health (public)",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{baseUrl}}/healthz"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Alive', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reject unauthenticated API",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{baseUrl}}/api/v1/status"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Authentication required', () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "OpenAPI schema",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/openapi.json"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Schema available', () => pm.response.to.have.status(200));",
+              "pm.test('OpenAPI v3', function () { pm.expect(pm.response.json().openapi).to.match(/^3\\./); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create demo scan (opt-in)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/v1/jobs",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"kind\": \"scan\",\n  \"band\": \"GSM900\",\n  \"duration_seconds\": 5,\n  \"shielded_ack\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.collectionVariables.get('allowMutations') !== 'true' || pm.collectionVariables.get('serviceMode') !== 'demo') pm.execution.skipRequest();"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Successful HTTP response', function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+              "pm.test('Standard envelope', function () { const body = pm.response.json(); ['code','message','data','request_id'].forEach(k => pm.expect(body).to.have.property(k)); pm.expect(body.request_id).to.be.a('string').and.not.empty; });",
+              "pm.test('Job accepted', () => pm.response.to.have.status(202));",
+              "if (pm.response.code === 202) pm.collectionVariables.set('jobId', pm.response.json().data.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Inspect demo job (opt-in)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/jobs/{{jobId}}"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.collectionVariables.get('allowMutations') !== 'true' || pm.collectionVariables.get('serviceMode') !== 'demo') pm.execution.skipRequest();",
+              "if (!pm.collectionVariables.get('jobId')) pm.execution.skipRequest();"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Successful HTTP response', function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+              "pm.test('Standard envelope', function () { const body = pm.response.json(); ['code','message','data','request_id'].forEach(k => pm.expect(body).to.have.property(k)); pm.expect(body.request_id).to.be.a('string').and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cancel demo job (opt-in)",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/api/v1/jobs/{{jobId}}"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.collectionVariables.get('allowMutations') !== 'true' || pm.collectionVariables.get('serviceMode') !== 'demo') pm.execution.skipRequest();",
+              "if (!pm.collectionVariables.get('jobId')) pm.execution.skipRequest();"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Successful HTTP response', function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+              "pm.test('Standard envelope', function () { const body = pm.response.json(); ['code','message','data','request_id'].forEach(k => pm.expect(body).to.have.property(k)); pm.expect(body.request_id).to.be.a('string').and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Clear demo observations (opt-in)",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/api/v1/observations"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.collectionVariables.get('allowMutations') !== 'true' || pm.collectionVariables.get('serviceMode') !== 'demo') pm.execution.skipRequest();"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Successful HTTP response', function () { pm.expect(pm.response.code).to.be.within(200, 299); });",
+              "pm.test('Standard envelope', function () { const body = pm.response.json(); ['code','message','data','request_id'].forEach(k => pm.expect(body).to.have.property(k)); pm.expect(body.request_id).to.be.a('string').and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

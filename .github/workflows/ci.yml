@@ -1,0 +1,54 @@
+name: CI
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Go checks
+        run: |
+          test -z "$(gofmt -l cmd internal)"
+          go vet ./...
+          go test ./...
+          go test -race ./...
+          go build ./cmd/server
+      - name: Publication surface check
+        run: |
+          python3 scripts/test_release_export.py
+          python3 scripts/release_export.py --check-only --check-tracked
+      - name: Build demo image (no push)
+        run: docker build --target runtime --build-arg VERSION="$(cat VERSION)" --build-arg REVISION="$GITHUB_SHA" -f deploy/docker/Dockerfile -t gsmsniffer:ci .
+      - name: Demo container read-only smoke (no RF)
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN=$(openssl rand -hex 32)
+          echo "::add-mask::$TOKEN"
+          printf '%s\n' "$TOKEN" > "$RUNNER_TEMP/gsmsniffer-token"
+          chmod 0444 "$RUNNER_TEMP/gsmsniffer-token"
+          trap 'docker rm -f gsmsniffer-ci >/dev/null 2>&1 || true; rm -f "$RUNNER_TEMP/gsmsniffer-token"' EXIT
+          docker run -d --name gsmsniffer-ci --read-only --cap-drop ALL --security-opt no-new-privileges \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            --tmpfs /var/lib/gsmsniffer:rw,uid=10001,gid=10001,mode=0700 \
+            -p 127.0.0.1:18080:8080 \
+            --mount "type=bind,src=$RUNNER_TEMP/gsmsniffer-token,dst=/run/secrets/api_token,readonly" \
+            -e GSMSNIFFER_TOKEN_FILE=/run/secrets/api_token gsmsniffer:ci
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18080/healthz >/dev/null; then break; fi
+            sleep 1
+          done
+          export TOKEN BASE=http://127.0.0.1:18080
+          bash scripts/smoke.sh

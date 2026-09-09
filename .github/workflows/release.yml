@@ -1,0 +1,122 @@
+name: Container release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Push versioned images to the confirmed Docker Hub namespace'
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - id: version
+        name: Validate version and tag
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          version=$(cat VERSION)
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          if [ "$REF_TYPE" = tag ]; then test "$REF_NAME" = "v$version"; fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Test and scan before publication
+        run: |
+          go vet ./...
+          go test ./...
+          go test -race ./...
+          go build ./cmd/server
+          python3 scripts/test_release_export.py
+          python3 scripts/release_export.py --check-only --check-tracked
+      - name: Build both targets without registry access
+        run: |
+          docker build --target runtime --build-arg VERSION="$(cat VERSION)" --build-arg REVISION="$GITHUB_SHA" -f deploy/docker/Dockerfile -t gsmsniffer:verify .
+          docker build --target shielded --build-arg VERSION="$(cat VERSION)" --build-arg REVISION="$GITHUB_SHA" -f deploy/docker/Dockerfile -t gsmsniffer:verify-shielded .
+      - name: Demo container read-only smoke (no RF)
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN=$(openssl rand -hex 32)
+          echo "::add-mask::$TOKEN"
+          printf '%s\n' "$TOKEN" > "$RUNNER_TEMP/gsmsniffer-token"
+          chmod 0444 "$RUNNER_TEMP/gsmsniffer-token"
+          trap 'docker rm -f gsmsniffer-ci >/dev/null 2>&1 || true; rm -f "$RUNNER_TEMP/gsmsniffer-token"' EXIT
+          docker run -d --name gsmsniffer-ci --read-only --cap-drop ALL --security-opt no-new-privileges \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            --tmpfs /var/lib/gsmsniffer:rw,uid=10001,gid=10001,mode=0700 \
+            -p 127.0.0.1:18080:8080 \
+            --mount "type=bind,src=$RUNNER_TEMP/gsmsniffer-token,dst=/run/secrets/api_token,readonly" \
+            -e GSMSNIFFER_TOKEN_FILE=/run/secrets/api_token gsmsniffer:verify
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18080/healthz >/dev/null; then break; fi
+            sleep 1
+          done
+          export TOKEN BASE=http://127.0.0.1:18080
+          bash scripts/smoke.sh
+  publish:
+    needs: validate
+    if: github.event_name == 'push' || inputs.publish == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: dockerhub
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Require confirmed namespace and token
+        env:
+          HUB_USER: ${{ vars.DOCKERHUB_USERNAME }}
+          HUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          test -n "$HUB_USER"
+          test -n "$HUB_TOKEN"
+          [[ "$HUB_USER" =~ ^[a-z0-9][a-z0-9_-]*$ ]]
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Push versioned demo image (never latest)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          target: runtime
+          push: true
+          tags: ${{ vars.DOCKERHUB_USERNAME }}/gsmsniffer:${{ needs.validate.outputs.version }}
+          build-args: |
+            VERSION=${{ needs.validate.outputs.version }}
+            REVISION=${{ github.sha }}
+          provenance: mode=max
+          sbom: true
+      - name: Push explicit shielded dependency image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          target: shielded
+          push: true
+          tags: ${{ vars.DOCKERHUB_USERNAME }}/gsmsniffer:${{ needs.validate.outputs.version }}-shielded
+          build-args: |
+            VERSION=${{ needs.validate.outputs.version }}
+            REVISION=${{ github.sha }}
+          provenance: mode=max
+          sbom: true

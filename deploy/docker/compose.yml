@@ -1,0 +1,33 @@
+name: gsmsniffer
+services:
+  gsmsniffer:
+    image: ${GSMSNIFFER_IMAGE:-gsmsniffer:2.0.0}
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      target: runtime
+    ports:
+      - "${GSMSNIFFER_BIND:-127.0.0.1}:${GSMSNIFFER_PORT:-8080}:8080"
+    environment:
+      GSMSNIFFER_ADDR: ":8080"
+      GSMSNIFFER_MODE: "${GSMSNIFFER_MODE:-demo}"
+      GSMSNIFFER_TOKEN_FILE: /run/secrets/api_token
+      GSMSNIFFER_DATA_DIR: /var/lib/gsmsniffer
+      GSMSNIFFER_MAX_DURATION_SECONDS: "300"
+    secrets:
+      - api_token
+    volumes:
+      - app_data:/var/lib/gsmsniffer
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: "no"
+    stop_grace_period: 15s
+    init: true
+secrets:
+  api_token:
+    file: ${GSMSNIFFER_TOKEN_PATH:?Set GSMSNIFFER_TOKEN_PATH to a token file}
+volumes:
+  app_data:
