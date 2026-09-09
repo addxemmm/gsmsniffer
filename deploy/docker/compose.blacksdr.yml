@@ -2,7 +2,6 @@
 # Required host paths must exist; Compose must not create empty firmware directories.
 services:
   gsmsniffer:
-    user: "0:0"
     environment:
       GSMSNIFFER_MODE: shielded
       GSMSNIFFER_DEVICE_ARGS: "${GSMSNIFFER_DEVICE_ARGS:?Set the explicit UHD device arguments}"
